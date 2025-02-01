@@ -16,6 +16,7 @@
 - ⚡ Performance Tracking
 - 📊 Multiple Log Levels
 - 🎯 Domain-specific Logging
+- 🔄 Format String Support
 - 🛠️ CLI & Library Support
 - 🌐 Browser & Server Compatible
 - 💪 TypeScript Support
