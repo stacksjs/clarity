@@ -14,119 +14,129 @@
 - 🌐 Browser & Server Compatible
 - 💪 TypeScript Support
 
-## Install
+# Introduction
 
-```bash
-bun install clarity
-npm install clarity
+Clarity is a modern logging client for TypeScript and Bun, offering powerful features for both development and production environments.
+
+## Key Features
+
+### 🎨 Rich Colored Output
+
+```ts
+const logger = new Logger('app')
+
+logger.info('Starting application...')    // Blue output
+logger.success('Setup complete')          // Green output
+logger.warning('Cache miss')              // Yellow output
+logger.error('Connection failed')         // Red output
 ```
 
-## Get Started
+### ⚡ Performance Tracking
 
-There are two ways of using clarity: _as a library or as a CLI._
+```ts
+const logger = new Logger('performance')
+const end = logger.info('Starting expensive operation...')
 
-### Library
+// ... do work ...
 
-Given the npm package is installed:
+end('Operation completed') // automatically includes time taken
+```
+
+### 🔍 Domain-specific Logging
+
+```ts
+const logger = new Logger('api')
+const authLogger = logger.extend('auth')
+const dbLogger = logger.extend('db')
+
+authLogger.info('User authenticated')     // [api:auth] info
+dbLogger.warning('Connection slow')       // [api:db] warning
+```
+
+### 📊 Log Management
+
+```bash
+# Watch logs in real-time
+clarity watch --level error --name "api:*"
+
+# Search through logs
+clarity search "connection failed" --level error
+
+# Export logs
+clarity export --format json --output logs.json
+
+# Follow last 50 lines
+clarity tail --lines 50 --follow
+```
+
+## Installation
+
+```bash
+bun install -d clarity
+```
+
+## Quick Start
+
+### Basic Usage
 
 ```ts
 import { Logger } from 'clarity'
 
-const logger = new Logger('parser')
+const logger = new Logger('app')
 
-// Basic logging
-logger.info('Starting parser...')
-logger.success('Document parsed successfully')
-logger.warning('Legacy format detected')
-logger.error('Failed to parse document')
+logger.info('Application starting...')
+logger.success('Server listening on port 3000')
 
-// Performance tracking
-const end = logger.info('Starting expensive operation...')
-// ... do work ...
-end('Operation completed') // automatically includes time taken
-
-// Domain-specific logging
-const parseLogger = logger.extend('json')
-parseLogger.info('Parsing JSON...') // outputs with [parser:json] prefix
-
-// Debug mode
-logger.debug('Additional debug information')
-
-// Format string support
-logger.info('Found %d errors in %s', 3, 'document.txt')
-
-// Conditional execution
-logger.only(() => {
-  // Only runs when logging is enabled
-  logger.info('Additional diagnostics...')
-})
+try {
+  // ... some operation
+}
+catch (error) {
+  logger.error('Failed to start server:', error)
+}
 ```
 
-### CLI
+### Advanced Features
+
+```ts
+// Performance tracking
+const end = logger.info('Starting database migration...')
+await runMigrations()
+end('Migration completed')
+
+// Domain-specific logging
+const dbLogger = logger.extend('db')
+const authLogger = logger.extend('auth')
+
+dbLogger.info('Connected to database')
+authLogger.warning('Rate limit reached')
+
+// Debug mode for development
+logger.debug('SQL query:', query)
+```
+
+### Using the CLI
 
 ```bash
 # Watch logs in real-time
-clarity watch --level debug --name "parser:*"
-clarity watch --json --timestamp
+clarity watch --level debug --name "api:*"
 
-# Log a one-off message
-clarity log "Starting deployment" --level info --name "deploy"
-
-# Export logs to a file
-clarity export --format json --output logs.json --level error
-clarity export --start 2024-01-01 --end 2024-01-31
-
-# Show and follow last N lines
-clarity tail --lines 50 --level error --follow
-clarity tail --name "api:*"
+# Export error logs
+clarity export --level error --output errors.json
 
 # Search through logs
-clarity search "error connecting to database" --level error
-clarity search "deployment" --start 2024-01-01 --case-sensitive
+clarity search "failed to connect" --level error
 
-# Clear log history
-clarity clear --level debug --before 2024-01-01
-clarity clear --name "temp:*"
+# Show and follow last 50 lines
+clarity tail --lines 50 --follow
+
+# Clear old logs
+clarity clear --before 2024-01-01
 
 # Manage configuration
 clarity config set --level debug
-clarity config list
-
-# Utility commands
-clarity --help    # Show help information
-clarity --version # Show version number
 ```
 
-All commands support the following common options:
-
-- `--level`: Filter by log level (debug, info, warning, error)
-- `--name`: Filter by logger name (supports patterns like "parser:*")
-- `--verbose`: Enable verbose output
-
-#### Command Reference
-
-- `watch`: Monitor logs in real-time with filtering and formatting options
-- `log`: Send one-off log messages with specified level and name
-- `export`: Save logs to a file in various formats with date range filtering
-- `tail`: Show and optionally follow the last N lines of logs
-- `search`: Search through logs using patterns with date range and case sensitivity options
-- `clear`: Clear log history with level, name, and date filtering
-- `config`: Manage clarity configuration (get, set, list)
-
-## Configuration
-
-Clarity can be configured using environment variables or global variables in the browser:
-
-```bash
-# Enable logging
-DEBUG=true
-DEBUG=parser # enable specific logger
-DEBUG=parser:* # enable logger and all subdomains
-
-# Control log level
-LOG_LEVEL=debug # show all logs
-LOG_LEVEL=error # show only errors
-```
+Ready to dive deeper? Check out our [CLI Guide](./cli) or [Configuration Guide](./config) for more details.
 
 ## Testing
 

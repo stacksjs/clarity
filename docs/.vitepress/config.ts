@@ -56,6 +56,7 @@ const sidebar = [
       { text: 'Intro', link: '/intro' },
       { text: 'Install', link: '/install' },
       { text: 'Usage', link: '/usage' },
+      { text: 'CLI', link: '/cli' },
       { text: 'Config', link: '/config' },
     ],
   },
