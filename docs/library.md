@@ -1,6 +1,6 @@
 # Library Guide
 
-This guide covers everything you need to know about using clarity as a library in your TypeScript/Bun applications.
+This guide covers everything you need to know about using clarity as a library in your TypeScript _(or JavaScript)_ applications & libraries.
 
 ## Basic Usage
 

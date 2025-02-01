@@ -1,4 +1,4 @@
-# Get Started
+# Usage
 
 There are two ways of using clarity: _as a library or as a CLI._
 
