@@ -289,7 +289,7 @@ function getVariable(variableName: string): string | undefined {
     return process.env[variableName]
   }
 
-  return globalThis[variableName]?.toString()
+  return (globalThis as any)[variableName]?.toString()
 }
 
 function isDefinedAndNotEquals(

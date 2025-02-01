@@ -1,3 +1,9 @@
+declare global {
+  interface Navigator {
+    product: string
+  }
+}
+
 export async function isServerProcess(): Promise<boolean> {
   if (typeof navigator !== 'undefined' && navigator.product === 'ReactNative') {
     return true

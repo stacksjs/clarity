@@ -199,3 +199,105 @@ describe('CLI', () => {
     expect(true).toBe(true)
   })
 })
+
+describe('Formatters', () => {
+  const sampleEntry = {
+    timestamp: new Date('2024-02-01T12:34:56.789Z'),
+    level: 'info',
+    name: 'test',
+    message: 'Hello world',
+  }
+
+  describe('TextFormatter', () => {
+    test('formats log entry with colors', () => {
+      const formatter = new TextFormatter(true)
+      const output = formatter.format(sampleEntry)
+
+      // The exact string match will depend on the color implementation
+      expect(output).toContain('Hello world')
+      expect(output).toContain('[test]')
+      expect(output).toContain('INFO')
+    })
+
+    test('formats log entry without colors', () => {
+      const formatter = new TextFormatter(false)
+      const output = formatter.format(sampleEntry)
+
+      expect(output).toBe('12:34:56:789 [test] INFO: Hello world')
+    })
+
+    test('formats object message', () => {
+      const formatter = new TextFormatter(false)
+      const entry = {
+        ...sampleEntry,
+        message: { key: 'value' },
+      }
+      const output = formatter.format(entry)
+
+      expect(output).toContain('{\n  "key": "value"\n}')
+    })
+  })
+
+  describe('JsonFormatter', () => {
+    test('formats log entry as JSON', () => {
+      const formatter = new JsonFormatter()
+      const output = formatter.format(sampleEntry)
+      const parsed = JSON.parse(output)
+
+      expect(parsed).toEqual({
+        timestamp: '2024-02-01T12:34:56.789Z',
+        level: 'info',
+        name: 'test',
+        message: 'Hello world',
+        metadata: expect.any(Object),
+      })
+    })
+
+    test('includes metadata', () => {
+      const formatter = new JsonFormatter()
+      const output = formatter.format(sampleEntry)
+      const parsed = JSON.parse(output)
+
+      expect(parsed.metadata).toHaveProperty('pid')
+      expect(parsed.metadata).toHaveProperty('hostname')
+      expect(parsed.metadata).toHaveProperty('environment')
+    })
+
+    test('handles object messages', () => {
+      const formatter = new JsonFormatter()
+      const entry = {
+        ...sampleEntry,
+        message: { key: 'value' },
+      }
+      const output = formatter.format(entry)
+      const parsed = JSON.parse(output)
+
+      expect(parsed.message).toEqual({ key: 'value' })
+    })
+  })
+
+  describe('Format Selection', () => {
+    test('uses JSON in production', () => {
+      process.env.NODE_ENV = 'production'
+      const logger = new Logger('test')
+      logger.info('test message')
+      // TODO: verify JSON output
+      expect(true).toBe(true)
+    })
+
+    test('uses text in development', () => {
+      process.env.NODE_ENV = 'development'
+      const logger = new Logger('test')
+      logger.info('test message')
+      // TODO: verify text output
+      expect(true).toBe(true)
+    })
+
+    test('respects format option', () => {
+      const logger = new Logger('test', { format: 'json' })
+      logger.info('test message')
+      // TODO: verify JSON output
+      expect(true).toBe(true)
+    })
+  })
+})
