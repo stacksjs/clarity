@@ -1,24 +1,10 @@
-<p align="center"><img src="https://github.com/stacksjs/rpx/blob/main/.github/art/cover.jpg?raw=true" alt="Social Card of this repo"></p>
+<p align="center"><img src="https://github.com/stacksjs/clarity/blob/main/.github/art/cover.jpg?raw=true" alt="Social Card of this repo"></p>
 
 # clarity
 
-> A modern `debug` client for TypeScript, offering powerful logging capabilities with colored output, performance tracking, and both CLI & library support.
+> Clarity is a modern logging & debugging client for TypeScript, offering powerful features for both development and production environments.
 
 ## Features
-
-- 🎨 Rich Colored Output
-- ⚡ Performance Tracking
-- 📊 Multiple Log Levels
-- 🎯 Domain-specific Logging
-- 🛠️ CLI & Library Support
-- 🌐 Browser & Server Compatible
-- 💪 TypeScript Support
-
-# Introduction
-
-Clarity is a modern logging client for TypeScript and Bun, offering powerful features for both development and production environments.
-
-## Key Features
 
 ### 🎨 Rich Colored Output
 
@@ -190,5 +176,5 @@ Made with 💙
 
 <!-- Badges -->
 
-<!-- [codecov-src]: https://img.shields.io/codecov/c/gh/stacksjs/rpx/main?style=flat-square
-[codecov-href]: https://codecov.io/gh/stacksjs/rpx -->
+<!-- [codecov-src]: https://img.shields.io/codecov/c/gh/stacksjs/clarity/main?style=flat-square
+[codecov-href]: https://codecov.io/gh/stacksjs/clarity -->

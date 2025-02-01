@@ -18,6 +18,7 @@ dtsx
 entrypoints
 heroicons
 iconify
+localtunnels
 lockb
 openweb
 outdir
@@ -31,6 +32,7 @@ socio
 Solana
 Spatie
 stacksjs
+tlsx
 twoslash
 typecheck
 unconfig
