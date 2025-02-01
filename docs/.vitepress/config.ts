@@ -12,7 +12,7 @@ const analyticsHead: HeadConfig[] = [
     'script',
     {
       'src': 'https://cdn.usefathom.com/script.js',
-      'data-site': 'DCOEHMGA',
+      'data-site': 'QAJWBHFO',
       'defer': '',
     },
   ],
@@ -22,9 +22,8 @@ const nav = [
   { text: 'News', link: 'https://stacksjs.org/news' },
   {
     text: 'Changelog',
-    link: 'https://github.com/stacksjs/ts-starter/blob/main/CHANGELOG.md',
+    link: 'https://github.com/stacksjs/clairty/blob/main/CHANGELOG.md',
   },
-  // { text: 'Blog', link: 'https://updates.ow3.org' },
   {
     text: 'Resources',
     items: [
@@ -63,13 +62,13 @@ const sidebar = [
   },
   { text: 'Showcase', link: '/Showcase' },
 ]
-const description = 'A TypeScript Starter Kit. For a better Development Experience.'
-const title = 'ts-starter | A TypeScript Starter Kit. For a better Development Experience.'
+const description = 'Modern debugging & logging library. For server & browser.'
+const title = 'clarity | Modern debugging & logging library. For server & browser.'
 
 export default withPwa(
   defineConfig({
     lang: 'en-US',
-    title: 'ts-starter',
+    title: 'clarity',
     description,
     metaChunk: true,
     cleanUrls: true,
@@ -84,7 +83,7 @@ export default withPwa(
       ['meta', { name: 'author', content: 'Stacks.js, Inc.' }],
       ['meta', {
         name: 'tags',
-        content: 'ts-starter, stacksjs, reverse proxy, modern, lightweight, zero-config, local development',
+        content: 'clarity, stacksjs, debug, debugger, debugging, log, logger, logging, modern, lightweight, zero-config, local development',
       }],
 
       ['meta', { property: 'og:type', content: 'website' }],
@@ -92,10 +91,9 @@ export default withPwa(
       ['meta', { property: 'og:title', content: title }],
       ['meta', { property: 'og:description', content: description }],
 
-      ['meta', { property: 'og:site_name', content: 'ts-starter' }],
+      ['meta', { property: 'og:site_name', content: 'clarity' }],
       ['meta', { property: 'og:image', content: './images/og-image.png' }],
-      ['meta', { property: 'og:url', content: 'https://reverse-proxy.sh/' }],
-      // ['script', { 'src': 'https://cdn.usefathom.com/script.js', 'data-site': '', 'data-spa': 'auto', 'defer': '' }],
+      ['meta', { property: 'og:url', content: 'https://stacks-clarity.netlify.app' }],
       ...analyticsHead,
     ],
 
@@ -124,7 +122,7 @@ export default withPwa(
       socialLinks: [
         { icon: 'twitter', link: 'https://twitter.com/stacksjs' },
         { icon: 'bluesky', link: 'https://bsky.app/profile/chrisbreuer.dev' },
-        { icon: 'github', link: 'https://github.com/stacksjs/ts-starter' },
+        { icon: 'github', link: 'https://github.com/stacksjs/clarity' },
         { icon: 'discord', link: 'https://discord.gg/stacksjs' },
       ],
 
