@@ -38,8 +38,8 @@ export class Logger {
     return new Logger(`${this.name}:${domain}`, this.options)
   }
 
-  public debug(message: any, ...positionals: Array<unknown>): Promise<void> {
-    return this.logEntry({
+  public debug(message: any, ...positionals: Array<unknown>): void {
+    void this.logEntry({
       level: 'debug',
       message: colors.gray(String(message)),
       positionals,
@@ -47,7 +47,7 @@ export class Logger {
     })
   }
 
-  public info(message: any, ...positionals: Array<unknown>): () => Promise<void> {
+  public info(message: any, ...positionals: Array<unknown>): (endMessage?: any, ...endPositionals: Array<unknown>) => void {
     const startTime = performance.now()
     void this.logEntry({
       level: 'info',
@@ -56,12 +56,16 @@ export class Logger {
       colors: { prefix: 'blue' },
     })
 
-    return async (endMessage?: any, ...endPositionals: Array<unknown>) => {
+    return (endMessage?: any, ...endPositionals: Array<unknown>) => {
       const duration = (performance.now() - startTime).toFixed(2)
       if (endMessage) {
-        await this.logEntry({
+        const finalMessage = typeof endMessage === 'string'
+          ? `${endMessage} ${colors.gray(`+${duration}ms`)}`
+          : endMessage
+
+        void this.logEntry({
           level: 'info',
-          message: `${endMessage} ${colors.gray(`+${duration}ms`)}`,
+          message: finalMessage,
           positionals: endPositionals,
           colors: { prefix: 'blue' },
         })
@@ -69,8 +73,8 @@ export class Logger {
     }
   }
 
-  public success(message: any, ...positionals: Array<unknown>): Promise<void> {
-    return this.logEntry({
+  public success(message: any, ...positionals: Array<unknown>): void {
+    void this.logEntry({
       level: 'success',
       message,
       positionals,
@@ -79,8 +83,8 @@ export class Logger {
     })
   }
 
-  public warning(message: any, ...positionals: Array<unknown>): Promise<void> {
-    return this.logEntry({
+  public warning(message: any, ...positionals: Array<unknown>): void {
+    void this.logEntry({
       level: 'warning',
       message,
       positionals,
@@ -89,8 +93,8 @@ export class Logger {
     })
   }
 
-  public error(message: any, ...positionals: Array<unknown>): Promise<void> {
-    return this.logEntry({
+  public error(message: any, ...positionals: Array<unknown>): void {
+    void this.logEntry({
       level: 'error',
       message,
       positionals,
@@ -124,13 +128,16 @@ export class Logger {
     const formattedMessage = this.formatMessage(message, positionals)
     const entry = this.createEntry(level, formattedMessage)
 
-    // Store the log entry
-    await logManager.addEntry(entry)
+    // Store the log entry in background
+    logManager.addEntry(entry).catch(() => { /* silent failure */ })
 
-    // Format and output the log
-    const output = await this.formatter.format(entry)
-
-    this.getWriter(level)(output)
+    try {
+      const output = await this.formatter.format(entry)
+      this.getWriter(level)(output)
+    }
+    catch (e) {
+      console.error('Error formatting log entry:', e)
+    }
   }
 
   private createEntry(level: LogLevel, message: unknown): LogEntry {
