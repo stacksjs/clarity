@@ -125,7 +125,24 @@ export class Logger {
     }
   }): Promise<void> {
     const { level, message, positionals = [], prefix, colors: customColors } = args
-    const formattedMessage = this.formatMessage(message, positionals)
+    let formattedMessage = this.formatMessage(message, positionals)
+
+    // Apply custom prefix if specified
+    if (prefix) {
+      formattedMessage = `${prefix} ${formattedMessage}`
+    }
+
+    // Apply custom colors if specified
+    if (customColors) {
+      if (customColors.timestamp) {
+        formattedMessage = colors[customColors.timestamp](formattedMessage)
+      }
+      if (customColors.prefix && prefix) {
+        const coloredPrefix = colors[customColors.prefix](prefix)
+        formattedMessage = formattedMessage.replace(prefix, coloredPrefix)
+      }
+    }
+
     const entry = this.createEntry(level, formattedMessage)
 
     // Store the log entry in background
