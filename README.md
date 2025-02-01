@@ -69,6 +69,8 @@ logger.only(() => {
 })
 ```
 
+To learn more about the Library usage, please refer to the [Library documentation](https://stacks-clarity.netlify.app/library).
+
 ### CLI
 
 ```bash
@@ -119,6 +121,8 @@ All commands support the following common options:
 - `search`: Search through logs using patterns with date range and case sensitivity options
 - `clear`: Clear log history with level, name, and date filtering
 - `config`: Manage clarity configuration (get, set, list)
+
+To learn more about the CLI usage, please refer to the [CLI documentation](https://stacks-clarity.netlify.app/cli).
 
 ## Configuration
 
