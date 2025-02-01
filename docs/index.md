@@ -4,8 +4,8 @@ layout: home
 
 hero:
   name: "clarity"
-  text: "Better TypeScript logging."
-  tagline: "Modern and powerful logging for TypeScript & Bun."
+  text: "Better logging & debugging."
+  tagline: "Modern and powerful logging for TypeScript."
   image: /images/logo-white.png
   actions:
     - theme: brand

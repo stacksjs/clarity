@@ -1,8 +1,6 @@
 # Install
 
-_This is just an example of the ts-starter docs._
-
-Installing `rpx` is easy. Simply pull it in via your package manager of choice, or download the binary directly.
+Installing `clarity` is easy. Simply pull it in via your package manager of choice, or download the binary directly.
 
 ## Package Managers
 
@@ -11,44 +9,44 @@ Choose your package manager of choice:
 ::: code-group
 
 ```sh [npm]
-npm install --save-dev @stacksjs/rpx
-# npm i -d @stacksjs/rpx
+npm install --save-dev @stacksjs/clarity
+# npm i -d @stacksjs/clarity
 
 # or, install globally via
-npm i -g @stacksjs/rpx
+npm i -g @stacksjs/clarity
 ```
 
 ```sh [bun]
-bun install --dev @stacksjs/rpx
-# bun add --dev @stacksjs/rpx
-# bun i -d @stacksjs/rpx
+bun install --dev @stacksjs/clarity
+# bun add --dev @stacksjs/clarity
+# bun i -d @stacksjs/clarity
 
 # or, install globally via
-bun add --global @stacksjs/rpx
+bun add --global @stacksjs/clarity
 ```
 
 ```sh [pnpm]
-pnpm add --save-dev @stacksjs/rpx
-# pnpm i -d @stacksjs/rpx
+pnpm add --save-dev @stacksjs/clarity
+# pnpm i -d @stacksjs/clarity
 
 # or, install globally via
-pnpm add --global @stacksjs/rpx
+pnpm add --global @stacksjs/clarity
 ```
 
 ```sh [yarn]
-yarn add --dev @stacksjs/rpx
-# yarn i -d @stacksjs/rpx
+yarn add --dev @stacksjs/clarity
+# yarn i -d @stacksjs/clarity
 
 # or, install globally via
-yarn global add @stacksjs/rpx
+yarn global add @stacksjs/clarity
 ```
 
 ```sh [brew]
-brew install rpx # coming soon
+brew install clarity # coming soon
 ```
 
 ```sh [pkgx]
-pkgx rpx # coming soon
+pkgx clarity # coming soon
 ```
 
 :::
@@ -63,56 +61,56 @@ Choose the binary that matches your platform and architecture:
 
 ```sh [macOS (arm64)]
 # Download the binary
-curl -L https://github.com/stacksjs/rpx/releases/download/v0.9.1/rpx-darwin-arm64 -o rpx
+curl -L https://github.com/stacksjs/clarity/releases/download/v0.9.1/clarity-darwin-arm64 -o clarity
 
 # Make it executable
-chmod +x rpx
+chmod +x clarity
 
 # Move it to your PATH
-mv rpx /usr/local/bin/rpx
+mv clarity /usr/local/bin/clarity
 ```
 
 ```sh [macOS (x64)]
 # Download the binary
-curl -L https://github.com/stacksjs/rpx/releases/download/v0.9.1/rpx-darwin-x64 -o rpx
+curl -L https://github.com/stacksjs/clarity/releases/download/v0.9.1/clarity-darwin-x64 -o clarity
 
 # Make it executable
-chmod +x rpx
+chmod +x clarity
 
 # Move it to your PATH
-mv rpx /usr/local/bin/rpx
+mv clarity /usr/local/bin/clarity
 ```
 
 ```sh [Linux (arm64)]
 # Download the binary
-curl -L https://github.com/stacksjs/rpx/releases/download/v0.9.1/rpx-linux-arm64 -o rpx
+curl -L https://github.com/stacksjs/clarity/releases/download/v0.9.1/clarity-linux-arm64 -o clarity
 
 # Make it executable
-chmod +x rpx
+chmod +x clarity
 
 # Move it to your PATH
-mv rpx /usr/local/bin/rpx
+mv clarity /usr/local/bin/clarity
 ```
 
 ```sh [Linux (x64)]
 # Download the binary
-curl -L https://github.com/stacksjs/rpx/releases/download/v0.9.1/rpx-linux-x64 -o rpx
+curl -L https://github.com/stacksjs/clarity/releases/download/v0.9.1/clarity-linux-x64 -o clarity
 
 # Make it executable
-chmod +x rpx
+chmod +x clarity
 
 # Move it to your PATH
-mv rpx /usr/local/bin/rpx
+mv clarity /usr/local/bin/clarity
 ```
 
 ```sh [Windows (x64)]
 # Download the binary
-curl -L https://github.com/stacksjs/rpx/releases/download/v0.9.1/rpx-windows-x64.exe -o rpx.exe
+curl -L https://github.com/stacksjs/clarity/releases/download/v0.9.1/clarity-windows-x64.exe -o clarity.exe
 
 # Move it to your PATH (adjust the path as needed)
-move rpx.exe C:\Windows\System32\rpx.exe
+move clarity.exe C:\Windows\System32\clarity.exe
 ```
 
 ::: tip
-You can also find the `rpx` binaries in GitHub [releases](https://github.com/stacksjs/rpx/releases).
+You can also find the `clarity` binaries in GitHub [releases](https://github.com/stacksjs/clarity/releases).
 :::

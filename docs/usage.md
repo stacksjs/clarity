@@ -1,89 +1,91 @@
 # Get Started
 
-There are two ways of using this reverse proxy: _as a library or as a CLI._
+There are two ways of using clarity: _as a library or as a CLI._
 
 ## Library
 
 Given the npm package is installed:
 
 ```ts
-import type { TlsConfig } from '@stacksjs/rpx'
-import { startProxy } from '@stacksjs/rpx'
+import { Logger } from 'clarity'
 
-export interface CleanupConfig {
-  hosts: boolean // clean up /etc/hosts, defaults to false
-  certs: boolean // clean up certificates, defaults to false
-}
+const logger = new Logger('parser')
 
-export interface ReverseProxyConfig {
-  from: string // domain to proxy from, defaults to localhost:3000
-  to: string // domain to proxy to, defaults to stacks.localhost
-  cleanUrls?: boolean // removes the .html extension from URLs, defaults to false
-  https: boolean | TlsConfig // automatically uses https, defaults to true, also redirects http to https
-  cleanup?: boolean | CleanupConfig // automatically cleans up /etc/hosts, defaults to false
-  verbose: boolean // log verbose output, defaults to false
-}
+// Basic logging
+logger.info('Starting parser...')
+logger.success('Document parsed successfully')
+logger.warning('Legacy format detected')
+logger.error('Failed to parse document')
 
-const config: ReverseProxyOptions = {
-  from: 'localhost:3000',
-  to: 'my-docs.localhost',
-  cleanUrls: true,
-  https: true,
-  cleanup: false,
-}
+// Performance tracking
+const end = logger.info('Starting expensive operation...')
+// ... do work ...
+end('Operation completed') // automatically includes time taken
 
-startProxy(config)
-```
+// Domain-specific logging
+const parseLogger = logger.extend('json')
+parseLogger.info('Parsing JSON...') // outputs with [parser:json] prefix
 
-In case you are trying to start multiple proxies, you may use this configuration:
+// Debug mode
+logger.debug('Additional debug information')
 
-```ts
-// reverse-proxy.config.{ts,js}
-import type { ReverseProxyOptions } from '@stacksjs/rpx'
-import os from 'node:os'
-import path from 'node:path'
+// Format string support
+logger.info('Found %d errors in %s', 3, 'document.txt')
 
-const config: ReverseProxyOptions = {
-  https: { // https: true -> also works with sensible defaults
-    caCertPath: path.join(os.homedir(), '.stacks', 'ssl', `stacks.localhost.ca.crt`),
-    certPath: path.join(os.homedir(), '.stacks', 'ssl', `stacks.localhost.crt`),
-    keyPath: path.join(os.homedir(), '.stacks', 'ssl', `stacks.localhost.crt.key`),
-  },
-
-  cleanup: {
-    hosts: true,
-    certs: false,
-  },
-
-  proxies: [
-    {
-      from: 'localhost:5173',
-      to: 'my-app.localhost',
-      cleanUrls: true,
-    },
-    {
-      from: 'localhost:5174',
-      to: 'my-api.local',
-    },
-  ],
-
-  verbose: true,
-}
-
-export default config
+// Conditional execution
+logger.only(() => {
+  // Only runs when logging is enabled
+  logger.info('Additional diagnostics...')
+})
 ```
 
 ## CLI
 
 ```bash
-rpx --from localhost:3000 --to my-project.localhost
-rpx --from localhost:8080 --to my-project.test --keyPath ./key.pem --certPath ./cert.pem
-rpx --help
-rpx --version
+# Watch logs in real-time
+clarity watch --level debug --name "parser:*"
+clarity watch --json --timestamp
+
+# Log a one-off message
+clarity log "Starting deployment" --level info --name "deploy"
+
+# Export logs to a file
+clarity export --format json --output logs.json --level error
+clarity export --start 2024-01-01 --end 2024-01-31
+
+# Show and follow last N lines
+clarity tail --lines 50 --level error --follow
+clarity tail --name "api:*"
+
+# Search through logs
+clarity search "error connecting to database" --level error
+clarity search "deployment" --start 2024-01-01 --case-sensitive
+
+# Clear log history
+clarity clear --level debug --before 2024-01-01
+clarity clear --name "temp:*"
+
+# Manage configuration
+clarity config set --level debug
+clarity config list
+
+# Utility commands
+clarity --help    # Show help information
+clarity --version # Show version number
 ```
 
-## Testing
+All commands support the following common options:
 
-```bash
-bun test
-```
+- `--level`: Filter by log level (debug, info, warning, error)
+- `--name`: Filter by logger name (supports patterns like "parser:*")
+- `--verbose`: Enable verbose output
+
+### Command Reference
+
+- `watch`: Monitor logs in real-time with filtering and formatting options
+- `log`: Send one-off log messages with specified level and name
+- `export`: Save logs to a file in various formats with date range filtering
+- `tail`: Show and optionally follow the last N lines of logs
+- `search`: Search through logs using patterns with date range and case sensitivity options
+- `clear`: Clear log history with level, name, and date filtering
+- `config`: Manage clarity configuration (get, set, list)
