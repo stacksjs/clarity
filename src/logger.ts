@@ -1,6 +1,7 @@
 import type { LogFormatter } from './formatters'
-import type { LogLevel } from './types'
+import type { LogColors, LogEntry, LogLevel } from './types'
 import process from 'node:process'
+import * as colors from './colors'
 import { format } from './format'
 import { createFormatter } from './formatters'
 import { logManager } from './storage/log-manager'
@@ -15,12 +16,13 @@ export interface LoggerOptions {
 export class Logger {
   private formatter!: LogFormatter
   private isServer!: boolean
+  private readonly prefix: string
 
   constructor(
     private readonly name: string,
     private options: LoggerOptions = {},
   ) {
-    // We need to initialize these asynchronously
+    this.prefix = `[${this.name}]`
     this.initialize()
   }
 
@@ -36,32 +38,65 @@ export class Logger {
     return new Logger(`${this.name}:${domain}`, this.options)
   }
 
-  public async debug(message: any, ...args: Array<unknown>): Promise<void> {
-    await this.log('debug', message, ...args)
+  public debug(message: any, ...positionals: Array<unknown>): Promise<void> {
+    return this.logEntry({
+      level: 'debug',
+      message: colors.gray(String(message)),
+      positionals,
+      colors: { prefix: 'gray' },
+    })
   }
 
-  public info(message: any, ...args: Array<unknown>): () => Promise<void> {
+  public info(message: any, ...positionals: Array<unknown>): () => Promise<void> {
     const startTime = performance.now()
-    void this.log('info', message, ...args)
+    void this.logEntry({
+      level: 'info',
+      message,
+      positionals,
+      colors: { prefix: 'blue' },
+    })
 
-    return async (endMessage?: string, ...endArgs: Array<unknown>) => {
+    return async (endMessage?: any, ...endPositionals: Array<unknown>) => {
       const duration = (performance.now() - startTime).toFixed(2)
       if (endMessage) {
-        await this.log('info', `${endMessage} (${duration}ms)`, ...endArgs)
+        await this.logEntry({
+          level: 'info',
+          message: `${endMessage} ${colors.gray(`+${duration}ms`)}`,
+          positionals: endPositionals,
+          colors: { prefix: 'blue' },
+        })
       }
     }
   }
 
-  public async success(message: any, ...args: Array<unknown>): Promise<void> {
-    await this.log('success', message, ...args)
+  public success(message: any, ...positionals: Array<unknown>): Promise<void> {
+    return this.logEntry({
+      level: 'success',
+      message,
+      positionals,
+      prefix: `✔ ${this.prefix}`,
+      colors: { timestamp: 'green', prefix: 'green' },
+    })
   }
 
-  public async warning(message: any, ...args: Array<unknown>): Promise<void> {
-    await this.log('warning', message, ...args)
+  public warning(message: any, ...positionals: Array<unknown>): Promise<void> {
+    return this.logEntry({
+      level: 'warning',
+      message,
+      positionals,
+      prefix: `⚠ ${this.prefix}`,
+      colors: { timestamp: 'yellow', prefix: 'yellow' },
+    })
   }
 
-  public async error(message: any, ...args: Array<unknown>): Promise<void> {
-    await this.log('error', message, ...args)
+  public error(message: any, ...positionals: Array<unknown>): Promise<void> {
+    return this.logEntry({
+      level: 'error',
+      message,
+      positionals,
+      prefix: `✖ ${this.prefix}`,
+      colors: { timestamp: 'red', prefix: 'red' },
+    })
   }
 
   public only(callback: () => void): void {
@@ -75,13 +110,19 @@ export class Logger {
     }
   }
 
-  private async log(level: LogLevel, message: any, ...args: any[]): Promise<void> {
-    const entry = {
-      timestamp: new Date(),
-      level,
-      name: this.name,
-      message: this.formatMessage(message, args),
+  private async logEntry(args: {
+    level: LogLevel
+    message: any
+    positionals?: Array<unknown>
+    prefix?: string
+    colors?: {
+      timestamp?: LogColors
+      prefix?: LogColors
     }
+  }): Promise<void> {
+    const { level, message, positionals = [], prefix, colors: customColors } = args
+    const formattedMessage = this.formatMessage(message, positionals)
+    const entry = this.createEntry(level, formattedMessage)
 
     // Store the log entry
     await logManager.addEntry(entry)
@@ -89,44 +130,61 @@ export class Logger {
     // Format and output the log
     const output = await this.formatter.format(entry)
 
-    if (this.isServer) {
-      if (level === 'error' || level === 'warning') {
-        process.stderr.write(`${output}\n`)
-      }
-      else {
-        process.stdout.write(`${output}\n`)
-      }
-    }
-    else {
-      // Browser environment
-      switch (level) {
-        case 'debug':
-          // eslint-disable-next-line no-console
-          console.debug(output)
-          break
-        case 'warning':
-          console.warn(output)
-          break
-        case 'error':
-          console.error(output)
-          break
-        default:
-          // eslint-disable-next-line no-console
-          console.log(output)
-      }
+    this.getWriter(level)(output)
+  }
+
+  private createEntry(level: LogLevel, message: unknown): LogEntry {
+    return {
+      timestamp: new Date(),
+      level,
+      message,
+      name: this.name,
     }
   }
 
-  private formatMessage(message: any, args: any[] = []): string {
-    if (typeof message === 'string' && args.length > 0)
-      return format(message, ...args)
+  private formatMessage(message: any, positionals: any[] = []): string {
+    if (typeof message === 'string' && positionals.length > 0) {
+      return format(message, ...positionals)
+    }
 
-    if (message instanceof Error)
+    if (message instanceof Error) {
       return message.stack || message.message
+    }
 
-    if (typeof message === 'object')
+    if (typeof message === 'object') {
       return JSON.stringify(message, null, 2)
+    }
 
     return String(message)
+  }
+
+  private getWriter(level: LogLevel): (output: string) => void {
+    return (output: string) => {
+      if (this.isServer) {
+        if (level === 'error' || level === 'warning') {
+          process.stderr.write(`${output}\n`)
+        }
+        else {
+          process.stdout.write(`${output}\n`)
+        }
+      }
+      else {
+        switch (level) {
+          case 'debug':
+            // eslint-disable-next-line no-console
+            console.debug(output)
+            break
+          case 'warning':
+            console.warn(output)
+            break
+          case 'error':
+            console.error(output)
+            break
+          default:
+            // eslint-disable-next-line no-console
+            console.log(output)
+        }
+      }
+    }
   }
 }
