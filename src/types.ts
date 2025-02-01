@@ -14,6 +14,7 @@ export interface LogEntry {
   timestamp: Date
   level: LogLevel
   message: any
+  name: string
 }
 
 export type ColorFunction = (text: string) => void

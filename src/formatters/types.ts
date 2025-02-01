@@ -1,5 +1,5 @@
 import type { LogEntry } from '../types'
 
 export interface LogFormatter {
-  format: (entry: LogEntry) => string
+  format: (entry: LogEntry) => Promise<string> | string
 }

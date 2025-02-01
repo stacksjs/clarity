@@ -1,5 +1,4 @@
 import type { LogEntry } from '../types'
-// src/formatters/text.ts
 import type { LogFormatter } from './types'
 import * as colors from '../colors'
 

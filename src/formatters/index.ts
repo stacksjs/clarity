@@ -6,7 +6,7 @@ export * from './json'
 export * from './text'
 export * from './types'
 
-export function createFormatter(format: 'json' | 'text' = 'text', options: { colors?: boolean } = {}): LogFormatter {
+export async function createFormatter(format: 'json' | 'text' = 'text', options: { colors?: boolean } = {}): Promise<LogFormatter> {
   switch (format) {
     case 'json':
       return new JsonFormatter()

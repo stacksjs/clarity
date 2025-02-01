@@ -13,16 +13,21 @@ export interface LoggerOptions {
 }
 
 export class Logger {
-  private formatter: LogFormatter
-  private isServer: boolean
+  private formatter!: LogFormatter
+  private isServer!: boolean
 
   constructor(
     private readonly name: string,
     private options: LoggerOptions = {},
   ) {
-    this.formatter = createFormatter(
-      options.format || (process.env.NODE_ENV === 'production' ? 'json' : 'text'),
-      { colors: options.colors ?? true },
+    // We need to initialize these asynchronously
+    this.initialize()
+  }
+
+  private async initialize() {
+    this.formatter = await createFormatter(
+      this.options.format || (process.env.NODE_ENV === 'production' ? 'json' : 'text'),
+      { colors: this.options.colors ?? true },
     )
     this.isServer = await isServerProcess()
   }
@@ -113,15 +118,15 @@ export class Logger {
   }
 
   private formatMessage(message: any, args: any[] = []): string {
-    if (typeof message === 'string' && args.length > 0) {
+    if (typeof message === 'string' && args.length > 0)
       return format(message, ...args)
-    }
-    if (message instanceof Error) {
+
+    if (message instanceof Error)
       return message.stack || message.message
-    }
-    if (typeof message === 'object') {
+
+    if (typeof message === 'object')
       return JSON.stringify(message, null, 2)
-    }
+
     return String(message)
   }
 }

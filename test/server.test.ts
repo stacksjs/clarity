@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
+import { JsonFormatter, TextFormatter } from '../src/formatters'
 import { Logger } from '../src/index'
 import { configManager } from '../src/storage/config-manager'
 import { logManager } from '../src/storage/log-manager'
@@ -203,7 +204,7 @@ describe('CLI', () => {
 describe('Formatters', () => {
   const sampleEntry = {
     timestamp: new Date('2024-02-01T12:34:56.789Z'),
-    level: 'info',
+    level: 'info' as const,
     name: 'test',
     message: 'Hello world',
   }
@@ -219,9 +220,9 @@ describe('Formatters', () => {
       expect(output).toContain('INFO')
     })
 
-    test('formats log entry without colors', () => {
+    test('formats log entry without colors', async () => {
       const formatter = new TextFormatter(false)
-      const output = formatter.format(sampleEntry)
+      const output = await formatter.format(sampleEntry)
 
       expect(output).toBe('12:34:56:789 [test] INFO: Hello world')
     })
@@ -239,9 +240,9 @@ describe('Formatters', () => {
   })
 
   describe('JsonFormatter', () => {
-    test('formats log entry as JSON', () => {
+    test('formats log entry as JSON', async () => {
       const formatter = new JsonFormatter()
-      const output = formatter.format(sampleEntry)
+      const output = await formatter.format(sampleEntry)
       const parsed = JSON.parse(output)
 
       expect(parsed).toEqual({
@@ -253,9 +254,9 @@ describe('Formatters', () => {
       })
     })
 
-    test('includes metadata', () => {
+    test('includes metadata', async () => {
       const formatter = new JsonFormatter()
-      const output = formatter.format(sampleEntry)
+      const output = await formatter.format(sampleEntry)
       const parsed = JSON.parse(output)
 
       expect(parsed.metadata).toHaveProperty('pid')
@@ -263,14 +264,14 @@ describe('Formatters', () => {
       expect(parsed.metadata).toHaveProperty('environment')
     })
 
-    test('handles object messages', () => {
+    test('handles object messages', async () => {
       const formatter = new JsonFormatter()
       const entry = {
         ...sampleEntry,
         message: { key: 'value' },
       }
-      const output = formatter.format(entry)
-      const parsed = JSON.parse(output)
+      const output = await formatter.format(entry)
+      const parsed = await JSON.parse(output)
 
       expect(parsed.message).toEqual({ key: 'value' })
     })

@@ -172,6 +172,7 @@ export class Logger {
       timestamp: new Date(),
       level,
       message,
+      name: this.name,
     }
   }
 
