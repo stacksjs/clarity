@@ -1,36 +1,49 @@
 import type { LogEntry, LogLevel } from '../types'
-import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
+import { configManager } from './config-manager'
+import { LogRotator } from './log-rotation'
 
 export class LogManager {
   private logDir: string
   private logFile: string
+  private rotator: LogRotator
   private cache: LogEntry[] = []
 
   constructor() {
     this.logDir = join(homedir(), '.clarity', 'logs')
     this.logFile = join(this.logDir, 'clarity.log')
+    this.rotator = new LogRotator(this.logDir, this.logFile)
   }
 
   async initialize(): Promise<void> {
-    await mkdir(this.logDir, { recursive: true })
+    // Initialize rotator with config from configManager
+    const config = await configManager.list()
+    this.rotator = new LogRotator(this.logDir, this.logFile, {
+      maxSize: config.maxLogSize || 10 * 1024 * 1024, // Default 10MB
+      maxFiles: config.maxLogFiles || 5,
+      compress: config.compressLogs !== false,
+      datePattern: config.logDatePattern || 'YYYY-MM-DD',
+    })
+    await this.rotator.initialize()
+
+    // Load recent logs into cache
     try {
-      const data = await readFile(this.logFile, 'utf-8')
-      this.cache = JSON.parse(data)
+      const logs = await this.rotator.readLogs({ files: 1 }) // Only load most recent file for cache
+      this.cache = logs
     }
     catch {
       this.cache = []
     }
   }
 
-  async save(): Promise<void> {
-    await writeFile(this.logFile, JSON.stringify(this.cache), 'utf-8')
-  }
-
   async addEntry(entry: LogEntry): Promise<void> {
     this.cache.push(entry)
-    await this.save()
+    // Keep cache size reasonable
+    if (this.cache.length > 1000) {
+      this.cache = this.cache.slice(-1000)
+    }
+    await this.rotator.writeLog(entry)
   }
 
   async getLogs(options: {
@@ -40,30 +53,41 @@ export class LogManager {
     end?: Date
     limit?: number
   }): Promise<LogEntry[]> {
-    let logs = this.cache
+    // If requesting recent logs, use cache
+    if (!options.start && !options.end && (options.limit || 0) <= 1000) {
+      return this.filterLogs(this.cache, options)
+    }
+
+    // Otherwise, read from files
+    const logs = await this.rotator.readLogs({
+      start: options.start,
+      end: options.end,
+    })
+
+    return this.filterLogs(logs, options)
+  }
+
+  private filterLogs(logs: LogEntry[], options: {
+    level?: LogLevel
+    name?: string
+    limit?: number
+  }): LogEntry[] {
+    let filtered = logs
 
     if (options.level) {
-      logs = logs.filter(log => log.level === options.level)
+      filtered = filtered.filter(log => log.level === options.level)
     }
 
     if (options.name) {
       const pattern = new RegExp(options.name.replace('*', '.*'))
-      logs = logs.filter(log => pattern.test(log.name))
-    }
-
-    if (options.start) {
-      logs = logs.filter(log => new Date(log.timestamp) >= options.start!)
-    }
-
-    if (options.end) {
-      logs = logs.filter(log => new Date(log.timestamp) <= options.end!)
+      filtered = filtered.filter(log => pattern.test(log.name))
     }
 
     if (options.limit) {
-      logs = logs.slice(-options.limit)
+      filtered = filtered.slice(-options.limit)
     }
 
-    return logs
+    return filtered
   }
 
   async clear(options: {
@@ -71,23 +95,25 @@ export class LogManager {
     name?: string
     before?: Date
   }): Promise<void> {
+    // Clear cache
     let logs = this.cache
-
     if (options.level) {
       logs = logs.filter(log => log.level !== options.level)
     }
-
     if (options.name) {
       const pattern = new RegExp(options.name.replace('*', '.*'))
       logs = logs.filter(log => !pattern.test(log.name))
     }
-
     if (options.before) {
       logs = logs.filter(log => new Date(log.timestamp) > options.before!)
     }
-
     this.cache = logs
-    await this.save()
+
+    // Create new log file with filtered logs
+    await this.rotator.initialize()
+    for (const log of logs) {
+      await this.rotator.writeLog(log)
+    }
   }
 
   async search(pattern: string, options: {

@@ -2,7 +2,18 @@ import type { ClarityConfig } from './types'
 import { loadConfig } from 'bunfig'
 
 export const defaultConfig: ClarityConfig = {
-  verbose: true,
+  level: 'info',
+  defaultName: 'app',
+  json: false,
+  timestamp: true,
+  colors: true,
+  format: 'text',
+  maxLogSize: 10 * 1024 * 1024,
+  maxLogFiles: 5,
+  compressLogs: true,
+  logDatePattern: 'YYYY-MM-DD',
+  logDirectory: '',
+  verbose: false,
 }
 
 // @ts-expect-error there is a current dtsx issue

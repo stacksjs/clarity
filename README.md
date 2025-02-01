@@ -8,7 +8,7 @@
 
 # clarity
 
-> A modern `debug` client for TypeScript, offering powerful logging capabilities with colored output, performance tracking, and both CLI & library support.
+> A modern `debug` client for TypeScript, offering powerful logging capabilities with colored output, performance tracking, log rotation, and both CLI & library support.
 
 ## Features
 
@@ -17,6 +17,7 @@
 - 📊 Multiple Log Levels
 - 🎯 Domain-specific Logging
 - 🔄 Format String Support
+- 📝 Automatic Log Rotation
 - 🛠️ CLI & Library Support
 - 🌐 Browser & Server Compatible
 - 💪 TypeScript Support
@@ -39,7 +40,13 @@ Given the npm package is installed:
 ```ts
 import { Logger } from 'clarity'
 
-const logger = new Logger('parser')
+// Configure the logger
+const logger = new Logger('parser', {
+  // Optional configuration
+  maxLogSize: 5 * 1024 * 1024, // 5MB
+  maxLogFiles: 10,
+  compressLogs: true,
+})
 
 // Basic logging
 logger.info('Starting parser...')
@@ -97,7 +104,12 @@ clarity search "deployment" --start 2024-01-01 --case-sensitive
 clarity clear --level debug --before 2024-01-01
 clarity clear --name "temp:*"
 
-# Manage configuration
+# Configure log rotation
+clarity config set --key maxLogSize --value 5242880  # 5MB
+clarity config set --key maxLogFiles --value 10
+clarity config set --key compressLogs --value true
+
+# Other configuration
 clarity config set --level debug
 clarity config list
 
@@ -126,7 +138,33 @@ To learn more about the CLI usage, please refer to the [CLI documentation](https
 
 ## Configuration
 
-Clarity can be configured using environment variables or global variables in the browser:
+Clarity can be configured programmatically, using environment variables, or through the CLI:
+
+### Programmatic Configuration
+
+```typescript
+import { Logger } from 'clarity'
+
+const logger = new Logger('app', {
+  // Log Levels
+  level: 'debug',
+  defaultName: 'app',
+  verbose: true,
+
+  // Output Format
+  json: false,
+  timestamp: true,
+  colors: true,
+
+  // Log Rotation
+  maxLogSize: 10 * 1024 * 1024, // 10MB
+  maxLogFiles: 5,
+  compressLogs: true,
+  logDirectory: '~/.clarity/logs',
+})
+```
+
+### Environment Variables
 
 ```bash
 # Enable logging
@@ -137,6 +175,14 @@ DEBUG=parser:* # enable logger and all subdomains
 # Control log level
 LOG_LEVEL=debug # show all logs
 LOG_LEVEL=error # show only errors
+```
+
+### CLI Configuration
+
+```bash
+# Configure logging
+clarity config set --key level --value debug
+clarity config set --key maxLogSize --value 5242880 # 5MB
 ```
 
 ## Testing
