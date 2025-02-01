@@ -146,7 +146,7 @@ Please see our [releases](https://github.com/stacksjs/clarity/releases) page for
 
 ## Contributing
 
-Please see [CONTRIBUTING](.github/CONTRIBUTING.md) for details.
+Please see [CONTRIBUTING](https://github.com/stacksjs/stacks/blob/main/.github/CONTRIBUTING.md) for details.
 
 ## Community
 
@@ -176,11 +176,11 @@ We would like to extend our thanks to the following sponsors for funding Stacks 
 - [debug](https://github.com/debug-js/debug)
 - [@open-draft/logger](https://github.com/open-draft/logger)
 - [Chris Breuer](https://github.com/chrisbbreuer)
-- [All Contributors](../../contributors)
+- [All Contributors](https://github.com/stacksjs/clarity/contributors)
 
 ## License
 
-The MIT License (MIT). Please see [LICENSE](LICENSE.md) for more information.
+The MIT License (MIT). Please see [LICENSE](https://github.com/stacksjs/clarity/blob/main/LICENSE.md) for more information.
 
 Made with 💙
 

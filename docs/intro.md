@@ -25,10 +25,10 @@ Clarity is a modern logging client for TypeScript and Bun, offering powerful fea
 ```ts
 const logger = new Logger('app')
 
-logger.info('Starting application...')    // Blue output
-logger.success('Setup complete')          // Green output
-logger.warning('Cache miss')              // Yellow output
-logger.error('Connection failed')         // Red output
+logger.info('Starting application...') // Blue output
+logger.success('Setup complete') // Green output
+logger.warning('Cache miss') // Yellow output
+logger.error('Connection failed') // Red output
 ```
 
 ### ⚡ Performance Tracking
@@ -49,8 +49,8 @@ const logger = new Logger('api')
 const authLogger = logger.extend('auth')
 const dbLogger = logger.extend('db')
 
-authLogger.info('User authenticated')     // [api:auth] info
-dbLogger.warning('Connection slow')       // [api:db] warning
+authLogger.info('User authenticated') // [api:auth] info
+dbLogger.warning('Connection slow') // [api:db] warning
 ```
 
 ### 📊 Log Management
@@ -150,7 +150,7 @@ Please see our [releases](https://github.com/stacksjs/clarity/releases) page for
 
 ## Contributing
 
-Please see [CONTRIBUTING](.github/CONTRIBUTING.md) for details.
+Please see [CONTRIBUTING](https://github.com/stacksjs/stacks/blob/main/.github/CONTRIBUTING.md) for details.
 
 ## Community
 
@@ -180,11 +180,11 @@ We would like to extend our thanks to the following sponsors for funding Stacks 
 - [debug](https://github.com/debug-js/debug)
 - [@open-draft/logger](https://github.com/open-draft/logger)
 - [Chris Breuer](https://github.com/chrisbbreuer)
-- [All Contributors](../../contributors)
+- [All Contributors](https://github.com/stacksjs/clarity/contributors)
 
 ## License
 
-The MIT License (MIT). Please see [LICENSE](LICENSE.md) for more information.
+The MIT License (MIT). Please see [LICENSE](https://github.com/stacksjs/clarity/blob/main/LICENSE.md) for more information.
 
 Made with 💙
 
