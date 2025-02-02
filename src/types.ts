@@ -10,7 +10,26 @@ export interface LogEntry {
   name: string
 }
 
-export type ColorFunction = (text: string) => void
+export type LogRotationFrequency = 'daily' | 'weekly' | 'monthly' | 'none'
+
+export interface LogRotationConfig {
+  /** Maximum file size in bytes before rotation */
+  maxSize?: number
+  /** Maximum number of rotated files to keep */
+  maxFiles?: number
+  /** Whether to compress rotated files */
+  compress?: boolean
+  /** Time-based rotation frequency */
+  frequency?: LogRotationFrequency
+  /** Hour of the day to perform rotation (0-23) */
+  rotateHour?: number
+  /** Minute of the hour to perform rotation (0-59) */
+  rotateMinute?: number
+  /** Day of week for weekly rotation (0-6, 0 is Sunday) */
+  rotateDayOfWeek?: number
+  /** Day of month for monthly rotation (1-31) */
+  rotateDayOfMonth?: number
+}
 
 export interface ClarityConfig {
   /**
@@ -78,6 +97,8 @@ export interface ClarityConfig {
    * If not specified, defaults to ~/.clarity/logs
    */
   logDirectory: string
+
+  rotation: LogRotationConfig
 
   /**
    * Enable verbose output

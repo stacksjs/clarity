@@ -1,30 +1,69 @@
-import type { LogEntry } from '../types'
+import type { LogEntry, LogRotationConfig, LogRotationFrequency } from '../types'
 import { Buffer } from 'node:buffer'
 import { mkdir, readdir, readFile, rename, stat, writeFile } from 'node:fs/promises'
 import { basename, dirname, join } from 'node:path'
 
-interface RotationConfig {
-  maxSize: number // Maximum file size in bytes before rotation (default: 10MB)
-  maxFiles: number // Maximum number of rotated files to keep (default: 5)
-  compress: boolean // Whether to compress rotated files (default: true)
-  datePattern: string // Date pattern for rotated files (default: YYYY-MM-DD)
+const DEFAULT_ROTATION_CONFIG: LogRotationConfig = {
+  maxSize: 10 * 1024 * 1024, // 10MB
+  maxFiles: 5,
+  compress: true,
+  frequency: 'none',
+  rotateHour: 0,
+  rotateMinute: 0,
+  rotateDayOfWeek: 0,
+  rotateDayOfMonth: 1,
 }
 
 export class LogRotator {
   private currentSize: number = 0
-  private defaultConfig: RotationConfig = {
-    maxSize: 10 * 1024 * 1024, // 10MB
-    maxFiles: 5,
-    compress: true,
-    datePattern: 'YYYY-MM-DD',
-  }
+  private lastRotationCheck: Date = new Date()
+  private nextRotationTime: Date = new Date()
+  private config: LogRotationConfig
 
   constructor(
     private logDir: string,
     private currentLogFile: string,
-    private config: Partial<RotationConfig> = {},
+    config: Partial<LogRotationConfig> = {},
   ) {
-    this.config = { ...this.defaultConfig, ...config }
+    this.config = { ...DEFAULT_ROTATION_CONFIG, ...config }
+    this.calculateNextRotation()
+  }
+
+  private calculateNextRotation(): void {
+    const now = new Date()
+    let next = new Date()
+
+    switch (this.config.frequency) {
+      case 'daily':
+        next.setHours(this.config.rotateHour, this.config.rotateMinute, 0, 0)
+        if (next <= now)
+          next.setDate(next.getDate() + 1)
+        break
+
+      case 'weekly':
+        next.setHours(this.config.rotateHour, this.config.rotateMinute, 0, 0)
+        const daysUntilTarget = (this.config.rotateDayOfWeek - next.getDay() + 7) % 7
+        next.setDate(next.getDate() + daysUntilTarget)
+        if (next <= now)
+          next.setDate(next.getDate() + 7)
+        break
+
+      case 'monthly':
+        next.setDate(this.config.rotateDayOfMonth)
+        next.setHours(this.config.rotateHour, this.config.rotateMinute, 0, 0)
+        if (next <= now) {
+          next.setMonth(next.getMonth() + 1)
+          next.setDate(this.config.rotateDayOfMonth)
+        }
+        break
+
+      case 'none':
+      default:
+        next = new Date(now.getTime() + 24 * 60 * 60 * 1000) // Set to tomorrow
+        break
+    }
+
+    this.nextRotationTime = next
   }
 
   async initialize(): Promise<void> {
@@ -39,6 +78,15 @@ export class LogRotator {
   }
 
   async shouldRotate(): Promise<boolean> {
+    const now = new Date()
+
+    // Check time-based rotation
+    if (this.config.frequency !== 'none' && now >= this.nextRotationTime) {
+      this.calculateNextRotation()
+      return true
+    }
+
+    // Check size-based rotation
     try {
       const stats = await stat(this.currentLogFile)
       return stats.size >= this.config.maxSize
@@ -48,12 +96,23 @@ export class LogRotator {
     }
   }
 
+  private getRotationTimestamp(): string {
+    const now = new Date()
+    const year = now.getFullYear()
+    const month = String(now.getMonth() + 1).padStart(2, '0')
+    const day = String(now.getDate()).padStart(2, '0')
+    const hour = String(now.getHours()).padStart(2, '0')
+    const minute = String(now.getMinutes()).padStart(2, '0')
+
+    return `${year}${month}${day}-${hour}${minute}`
+  }
+
   async rotateFile(): Promise<void> {
-    const timestamp = new Date().toISOString().split('T')[0]
+    const timestamp = this.getRotationTimestamp()
     const baseFilename = basename(this.currentLogFile, '.log')
     let index = 1
 
-    // Find next available index for rotation
+    // Find next available index
     while (true) {
       const rotatedFilename = join(
         this.logDir,
@@ -104,7 +163,7 @@ export class LogRotator {
       .map(file => ({
         name: file,
         path: join(this.logDir, file),
-        timestamp: file.split('.')[1], // Extract date from filename
+        timestamp: file.split('.')[1], // Extract timestamp from filename
       }))
       .sort((a, b) => b.timestamp.localeCompare(a.timestamp)) // Sort by date, newest first
 
@@ -123,7 +182,7 @@ export class LogRotator {
     const logString = `${JSON.stringify(entry)}\n`
     const size = Buffer.byteLength(logString)
 
-    if (this.currentSize + size > this.config.maxSize) {
+    if (await this.shouldRotate()) {
       await this.rotateFile()
     }
 

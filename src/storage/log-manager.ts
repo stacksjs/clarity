@@ -1,4 +1,4 @@
-import type { LogEntry, LogLevel } from '../types'
+import type { LogEntry, LogLevel, LogRotationConfig } from '../types'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { configManager } from './config-manager'
@@ -17,19 +17,25 @@ export class LogManager {
   }
 
   async initialize(): Promise<void> {
-    // Initialize rotator with config from configManager
+    // Initialize rotator with config
     const config = await configManager.list()
-    this.rotator = new LogRotator(this.logDir, this.logFile, {
-      maxSize: config.maxLogSize || 10 * 1024 * 1024, // Default 10MB
-      maxFiles: config.maxLogFiles || 5,
-      compress: config.compressLogs !== false,
-      datePattern: config.logDatePattern || 'YYYY-MM-DD',
-    })
+    const rotationConfig: LogRotationConfig = {
+      maxSize: config.rotation?.maxSize || 10 * 1024 * 1024,
+      maxFiles: config.rotation?.maxFiles || 5,
+      compress: config.rotation?.compress !== false,
+      frequency: config.rotation?.frequency || 'none',
+      rotateHour: config.rotation?.rotateHour || 0,
+      rotateMinute: config.rotation?.rotateMinute || 0,
+      rotateDayOfWeek: config.rotation?.rotateDayOfWeek || 0,
+      rotateDayOfMonth: config.rotation?.rotateDayOfMonth || 1,
+    }
+
+    this.rotator = new LogRotator(this.logDir, this.logFile, rotationConfig)
     await this.rotator.initialize()
 
     // Load recent logs into cache
     try {
-      const logs = await this.rotator.readLogs({ files: 1 }) // Only load most recent file for cache
+      const logs = await this.rotator.readLogs({ files: 1 })
       this.cache = logs
     }
     catch {
