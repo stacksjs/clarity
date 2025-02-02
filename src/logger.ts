@@ -1,5 +1,5 @@
 import type { LogFormatter } from './formatters'
-import type { LogColors, LogEntry, LogLevel } from './types'
+import type { LogColors, LogEntry, LogLevel, LogRotationConfig } from './types'
 import process from 'node:process'
 import * as colors from './colors'
 import { format } from './format'
@@ -11,6 +11,8 @@ export interface LoggerOptions {
   format?: 'json' | 'text'
   colors?: boolean
   timestamp?: boolean
+  formatter?: LogFormatter
+  rotation?: LogRotationConfig
 }
 
 export class Logger {
@@ -19,14 +21,14 @@ export class Logger {
   private readonly prefix: string
 
   constructor(
-    private readonly name: string,
+    public readonly name: string,
     private options: LoggerOptions = {},
   ) {
     this.prefix = `[${this.name}]`
     this.initialize()
   }
 
-  private async initialize() {
+  public async initialize(): Promise<void> {
     this.formatter = await createFormatter(
       this.options.format || (process.env.NODE_ENV === 'production' ? 'json' : 'text'),
       { colors: this.options.colors ?? true },
