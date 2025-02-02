@@ -163,44 +163,6 @@ describe('Logger', () => {
   })
 })
 
-// tests/cli.test.ts
-describe('CLI', () => {
-  test('watch command', async () => {
-    // TODO: Test CLI watch command
-    expect(true).toBe(true)
-  })
-
-  test('log command', async () => {
-    // TODO: Test CLI log command
-    expect(true).toBe(true)
-  })
-
-  test('export command', async () => {
-    // TODO: Test CLI export command
-    expect(true).toBe(true)
-  })
-
-  test('tail command', async () => {
-    // TODO: Test CLI tail command
-    expect(true).toBe(true)
-  })
-
-  test('search command', async () => {
-    // TODO: Test CLI search command
-    expect(true).toBe(true)
-  })
-
-  test('clear command', async () => {
-    // TODO: Test CLI clear command
-    expect(true).toBe(true)
-  })
-
-  test('config command', async () => {
-    // TODO: Test CLI config command
-    expect(true).toBe(true)
-  })
-})
-
 describe('Formatters', () => {
   const sampleEntry = {
     timestamp: new Date('2024-02-01T12:34:56.789Z'),
