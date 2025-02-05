@@ -1,3 +1,4 @@
+@ -1,50 +0,0 @@
 export interface WatchOptions {
   level?: 'debug' | 'info' | 'warning' | 'error'
   name?: string

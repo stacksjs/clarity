@@ -4,6 +4,10 @@ declare global {
   }
 }
 
+export function isBrowserProcess(): boolean {
+  return typeof window !== 'undefined'
+}
+
 export async function isServerProcess(): Promise<boolean> {
   if (typeof navigator !== 'undefined' && navigator.product === 'ReactNative') {
     return true
@@ -25,4 +29,11 @@ export async function isServerProcess(): Promise<boolean> {
   }
 
   return false
+}
+
+export function chunk<T>(array: T[], size: number): T[][] {
+  const chunks: T[][] = []
+  for (let i = 0; i < array.length; i += size)
+    chunks.push(array.slice(i, i + size))
+  return chunks
 }

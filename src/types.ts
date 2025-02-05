@@ -3,24 +3,40 @@ import type * as colors from './colors'
 export type LogLevel = 'debug' | 'info' | 'success' | 'warning' | 'error'
 export type LogColors = keyof typeof colors
 
+export type RotationFrequency = 'hourly' | 'daily' | 'weekly' | 'monthly' | 'none'
+
 export interface LogEntry {
   timestamp: Date
   level: LogLevel
   message: any
   name: string
+  args?: any[]
 }
 
-export type LogRotationFrequency = 'daily' | 'weekly' | 'monthly' | 'none'
+export interface KeyRotationConfig {
+  enabled: boolean
+  interval: number // in days
+  maxKeys: number
+}
 
-export interface LogRotationConfig {
+export interface EncryptionConfig {
+  algorithm?: 'aes-256-cbc' | 'aes-256-gcm' | 'chacha20-poly1305'
+  keyId?: string
+  compress?: boolean
+  keyRotation?: KeyRotationConfig // Added key rotation configuration
+}
+
+export interface RotationConfig {
   /** Maximum file size in bytes before rotation */
   maxSize?: number
   /** Maximum number of rotated files to keep */
   maxFiles?: number
+  /** Maximum log age in days before deletion */
+  maxAge?: number
   /** Whether to compress rotated files */
   compress?: boolean
   /** Time-based rotation frequency */
-  frequency?: LogRotationFrequency
+  frequency?: RotationFrequency
   /** Hour of the day to perform rotation (0-23) */
   rotateHour?: number
   /** Minute of the hour to perform rotation (0-59) */
@@ -29,6 +45,12 @@ export interface LogRotationConfig {
   rotateDayOfWeek?: number
   /** Day of month for monthly rotation (1-31) */
   rotateDayOfMonth?: number
+  /** Custom log file name pattern */
+  pattern?: string
+  /** Enable encryption of rotated files */
+  encrypt?: boolean | EncryptionConfig
+  /** Key rotation configuration */
+  keyRotation?: KeyRotationConfig
 }
 
 export interface ClarityConfig {
@@ -43,12 +65,6 @@ export interface ClarityConfig {
    * @default 'app'
    */
   defaultName: string
-
-  /**
-   * Use JSON output format
-   * @default false
-   */
-  json: boolean
 
   /**
    * Show timestamps in logs
@@ -70,21 +86,9 @@ export interface ClarityConfig {
 
   /**
    * Maximum size of log files in bytes before rotation
-   * @default 10485760 (10MB)
+   * @default 10485760 // (10MB)
    */
   maxLogSize: number
-
-  /**
-   * Number of rotated files to keep
-   * @default 5
-   */
-  maxLogFiles: number
-
-  /**
-   * Enable gzip compression for rotated files
-   * @default true
-   */
-  compressLogs: boolean
 
   /**
    * Date pattern for rotated files
@@ -98,7 +102,10 @@ export interface ClarityConfig {
    */
   logDirectory: string
 
-  rotation: LogRotationConfig
+  /**
+   * Enable log rotation
+   */
+  rotation: RotationConfig | boolean
 
   /**
    * Enable verbose output
@@ -108,3 +115,7 @@ export interface ClarityConfig {
 }
 
 export type ClarityOptions = Partial<ClarityConfig>
+
+export interface Formatter {
+  format: (entry: LogEntry) => Promise<string>
+}

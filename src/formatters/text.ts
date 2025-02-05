@@ -1,46 +1,40 @@
-import type { LogEntry } from '../types'
-import type { LogFormatter } from './types'
+import type { ClarityConfig, Formatter, LogEntry, LogLevel } from '../types'
 import * as colors from '../colors'
+import { format } from '../format'
 
-export class TextFormatter implements LogFormatter {
-  constructor(private useColors: boolean = true) { }
+export class TextFormatter implements Formatter {
+  constructor(private config: ClarityConfig) { }
 
   async format(entry: LogEntry): Promise<string> {
-    const timestamp = this.formatTimestamp(entry.timestamp)
-    const level = this.formatLevel(entry.level)
-    const prefix = this.formatPrefix(entry.name)
-    const message = this.formatMessage(entry.message)
+    const timestamp = this.config.timestamp ? `${colors.gray(entry.timestamp.toISOString())} ` : ''
+    const name = colors.gray(`[${entry.name}]`)
 
-    return `${timestamp} ${prefix} ${level}: ${message}`
-  }
-
-  private formatTimestamp(timestamp: Date): string {
-    const time = `${timestamp.toLocaleTimeString()}:${timestamp.getMilliseconds()}`
-    return this.useColors ? colors.gray(time) : time
-  }
-
-  private formatLevel(level: string): string {
-    if (!this.useColors)
-      return level.toUpperCase()
-
-    switch (level) {
-      case 'debug': return colors.gray('DEBUG')
-      case 'info': return colors.blue('INFO')
-      case 'success': return colors.green('SUCCESS')
-      case 'warning': return colors.yellow('WARNING')
-      case 'error': return colors.red('ERROR')
-      default: return level.toUpperCase()
+    const levelSymbols: Record<LogLevel, string> = {
+      debug: '🔍',
+      info: 'ℹ️',
+      success: '✅',
+      warning: '⚠️',
+      error: '❌',
     }
-  }
 
-  private formatPrefix(name: string): string {
-    const prefix = `[${name}]`
-    return this.useColors ? colors.blue(prefix) : prefix
-  }
+    const levelColors: Record<LogLevel, (text: string) => string> = {
+      debug: colors.gray,
+      info: colors.blue,
+      success: colors.green,
+      warning: colors.yellow,
+      error: colors.red,
+    }
 
-  private formatMessage(message: any): string {
-    if (typeof message === 'string')
-      return message
-    return JSON.stringify(message, null, 2)
+    // Handle positional formatting if args are present
+    let message = entry.message
+    if (Array.isArray(entry.args))
+      message = format(entry.message, ...entry.args)
+
+    const symbol = this.config.colors ? levelSymbols[entry.level] : ''
+    message = this.config.colors
+      ? levelColors[entry.level](message)
+      : message
+
+    return `${timestamp}${name} ${symbol} ${message}`
   }
 }

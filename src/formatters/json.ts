@@ -1,9 +1,8 @@
-import type { LogEntry } from '../types'
-import type { LogFormatter } from './types'
+import type { Formatter, LogEntry } from '../types'
 import process from 'node:process'
 import { isServerProcess } from '../utils'
 
-export class JsonFormatter implements LogFormatter {
+export class JsonFormatter implements Formatter {
   async format(entry: LogEntry): Promise<string> {
     const isServer = await isServerProcess()
     const metadata = await this.getMetadata(isServer)
@@ -19,20 +18,25 @@ export class JsonFormatter implements LogFormatter {
 
   private async getMetadata(isServer: boolean) {
     if (isServer) {
-      // Server environment
       const { hostname } = await import('node:os')
       return {
         pid: process.pid,
         hostname: hostname(),
         environment: process.env.NODE_ENV || 'development',
+        platform: process.platform,
+        version: process.version,
       }
     }
 
-    // Browser environment
     return {
       userAgent: navigator.userAgent,
       hostname: window.location.hostname || 'browser',
       environment: process.env.NODE_ENV || 'development',
+      viewport: {
+        width: window.innerWidth,
+        height: window.innerHeight,
+      },
+      language: navigator.language,
     }
   }
 }

@@ -4,6 +4,7 @@ booleanish
 bumpp
 bunfig
 bunx
+chacha
 changelogen
 changelogithub
 codecov

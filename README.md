@@ -12,15 +12,25 @@
 
 ## Features
 
-- 🎨 Rich Colored Output
-- ⚡ Performance Tracking
-- 📊 Multiple Log Levels
-- 🎯 Domain-specific Logging
-- 🔄 Format String Support
-- 📝 Automatic Log Rotation
-- 🛠️ CLI & Library Support
-- 🌐 Browser & Server Compatible
-- 💪 TypeScript Support
+- 🚀 High-Performance Logging
+- 🎯 Domain-Specific Namespaces
+- 🤞 Fingers-Crossed Log Buffering
+- 🔄 Automatic Log Rotation & Cleanup
+- 🔐 Encrypted Log Storage
+
+### Output & Formatting
+
+- 🎨 Rich Color-Coded Console Output
+- 📊 Multiple Log Levels _(debug, info, success, warn, error)_
+- 🔠 Format String Support _(%s, %d, %j, etc.)_
+- ⚡ Built-in Performance Tracking
+
+### Platform Support
+
+- 🌐 Universal _(Browser + Server)_
+- 🛠️ CLI & Library APIs
+- 💻 First-Class TypeScript Support
+- 📦 Zero External Dependencies
 
 ## Install
 
@@ -44,8 +54,13 @@ import { Logger } from 'clarity'
 const logger = new Logger('parser', {
   // Optional configuration
   maxLogSize: 5 * 1024 * 1024, // 5MB
-  maxLogFiles: 10,
-  compressLogs: true,
+
+  rotation: {
+    maxLogFiles: 10,
+    compress: true,
+  },
+
+  encrypted: true,
 })
 
 // Basic logging
@@ -152,14 +167,19 @@ const logger = new Logger('app', {
   verbose: true,
 
   // Output Format
-  json: false,
+  format: 'json',
   timestamp: true,
   colors: true,
 
   // Log Rotation
-  maxLogSize: 10 * 1024 * 1024, // 10MB
-  maxLogFiles: 5,
-  compressLogs: true,
+  rotation: {
+    frequency: 'daily',
+    maxLogSize: 10 * 1024 * 1024, // 10MB
+    maxLogFiles: 5,
+    compress: true,
+  },
+
+  encrypt: true,
   logDirectory: '~/.clarity/logs',
 })
 ```
