@@ -1,5 +1,6 @@
 export * from './colors'
 export * from './config'
 export * from './format'
+export * from './logger'
 export * from './types'
 export * from './utils'
