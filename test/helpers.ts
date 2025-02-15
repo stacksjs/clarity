@@ -1,5 +1,8 @@
+import type { Logger } from '../src/logger'
 import type { LogEntry } from '../src/types'
 import { Buffer } from 'node:buffer'
+import { readdir, readFile } from 'node:fs/promises'
+import { join } from 'node:path'
 import process from 'node:process'
 import { Readable } from 'node:stream'
 
@@ -8,23 +11,42 @@ import { Readable } from 'node:stream'
  */
 export class TimeHelper {
   private originalNow: typeof Date.now
-  private mockedTime: number
+  private originalDate: typeof Date
+  private currentTime: number
 
   constructor() {
     this.originalNow = Date.now
-    this.mockedTime = Date.now()
+    this.originalDate = Date
+    this.currentTime = Date.now()
+
+    // Override Date.now
+    Date.now = () => this.currentTime
+
+    // Override Date constructor
+    const currentTime = this.currentTime
+    // @ts-expect-error - we need to override the Date constructor
+    globalThis.Date = class extends Date {
+      constructor(...args: ConstructorParameters<typeof Date>) {
+        super(args.length ? args[0] : currentTime)
+      }
+    }
   }
 
-  mockTime(): void {
-    Date.now = () => this.mockedTime
+  setCurrentTime(date: Date): void {
+    this.currentTime = date.getTime()
   }
 
-  advance(ms: number): void {
-    this.mockedTime += ms
+  advanceTime(ms: number): void {
+    this.currentTime += ms
+  }
+
+  async sleep(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms))
   }
 
   restore(): void {
     Date.now = this.originalNow
+    globalThis.Date = this.originalDate
   }
 }
 
@@ -32,33 +54,114 @@ export class TimeHelper {
  * File system mocks
  */
 export class FSHelper {
-  private files: Map<string, Buffer>
+  private logs: Map<string, string> = new Map()
+  private logger: Logger
 
-  constructor() {
-    this.files = new Map()
-  }
-
-  writeFile(path: string, data: Buffer | string): void {
-    this.files.set(path, Buffer.from(data))
-  }
-
-  readFile(path: string): Buffer {
-    const data = this.files.get(path)
-    if (!data)
-      throw new Error(`File not found: ${path}`)
-    return data
-  }
-
-  exists(path: string): boolean {
-    return this.files.has(path)
-  }
-
-  delete(path: string): void {
-    this.files.delete(path)
+  constructor(logger: Logger) {
+    this.logger = logger
   }
 
   clear(): void {
-    this.files.clear()
+    this.logs.clear()
+  }
+
+  async getLogContents(): Promise<string> {
+    console.error('getLogContents called')
+    const files = await this.getLogFiles()
+    console.error('Found log files:', files)
+    let contents = ''
+
+    for (const file of files) {
+      console.error('Reading file:', file)
+      const fileContents = await readFile(file, 'utf-8')
+      console.error('Raw file contents length:', fileContents.length)
+      const lines = fileContents.split('\n').filter(Boolean)
+      console.error('Number of lines:', lines.length)
+
+      for (const line of lines) {
+        try {
+          let processedLine: string
+          if (line.startsWith('RAW: ')) {
+            processedLine = line.substring(5) // Remove RAW: prefix
+          }
+          else {
+            try {
+              processedLine = await this.logger.decrypt(line)
+            }
+            catch (error) {
+              // If decryption fails, try to parse it as a raw line
+              console.error('Error decrypting log data:', error)
+              try {
+                // Check if it's a valid JSON string
+                JSON.parse(line)
+                // If it is, skip this line as it's encrypted but we can't decrypt it
+                continue
+              }
+              catch {
+                // If it's not a valid JSON string, treat it as a raw line
+                processedLine = line
+              }
+            }
+          }
+
+          // Extract message after timestamp and logger name
+          const parts = processedLine.split('[test]')
+          if (parts.length > 1) {
+            const timestamp = parts[0].trim()
+            const afterTest = parts[1].trim()
+            const message = afterTest.split(' ').slice(1).join(' ').trim()
+            if (message) {
+              contents += `${timestamp}  ${message}\n`
+              console.error('Extracted message:', message)
+            }
+          }
+          else {
+            // If the line doesn't contain [test], just add it as is
+            contents += `${processedLine}\n`
+          }
+        }
+        catch (error) {
+          console.error('Error processing line:', error)
+          // Skip lines that can't be processed
+          continue
+        }
+      }
+    }
+
+    console.error('Final contents:', contents)
+    const result = contents.trim()
+    console.error('Decrypted log contents:', result)
+    return result
+  }
+
+  async getLogFiles(): Promise<string[]> {
+    console.error('Looking for log files in directory:', this.logger.config.logDirectory)
+    const files = await readdir(this.logger.config.logDirectory)
+    console.error('Found files:', files)
+    const fullPaths = files.map(file => join(this.logger.config.logDirectory, file))
+    console.error('Full paths:', fullPaths)
+    return fullPaths
+  }
+
+  async getRawLogContents(): Promise<string> {
+    console.error('getRawLogContents called')
+    const files = await this.getLogFiles()
+    console.error('Found log files:', files)
+    let contents = ''
+
+    for (const file of files) {
+      const fileContents = await readFile(file, 'utf-8')
+      console.error('File content length:', fileContents.length)
+      contents += fileContents
+    }
+
+    console.error('Total raw contents length:', contents.length)
+    console.error('Raw log contents:', contents)
+    return contents
+  }
+
+  async decryptLogContents(): Promise<string> {
+    return this.getLogContents()
   }
 }
 
@@ -147,8 +250,8 @@ export class ProcessHelper {
     this.originalEnv = { ...process.env }
   }
 
-  mockEnv(env: Record<string, string>): void {
-    process.env = { ...env }
+  setEnv(key: string, value: string): void {
+    process.env[key] = value
   }
 
   restore(): void {

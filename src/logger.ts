@@ -1,8 +1,10 @@
-import type { ClarityConfig, EncryptionConfig, Formatter, LogEntry, LogLevel } from './types'
+import type { CipherGCM, DecipherGCM } from 'node:crypto'
+import type { Readable } from 'node:stream'
+import type { ClarityConfig, EncryptionConfig, Formatter, LogEntry, LoggerOptions, LogLevel } from './types'
 import { Buffer } from 'node:buffer'
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'node:crypto'
 import { createReadStream, createWriteStream } from 'node:fs'
-import { mkdir, readdir, readFile, stat, unlink, writeFile } from 'node:fs/promises'
+import { appendFile, mkdir, readdir, readFile, rename, stat, unlink, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import process from 'node:process'
 import { pipeline } from 'node:stream/promises'
@@ -42,7 +44,7 @@ export type BunTimer = ReturnType<typeof setTimeout>
 
 export class Logger {
   private name: string
-  private config: ClarityConfig
+  readonly config: ClarityConfig
   private timers: Map<string, number>
   private subLoggers: Map<string, Logger>
   private formatter: Formatter
@@ -53,10 +55,24 @@ export class Logger {
   private logBuffer: LogEntry[] = []
   private isActivated: boolean = false
   private fingersCrossedConfig?: FingersCrossedConfig
+  private options: LoggerOptions
 
-  constructor(name: string, options: Partial<ClarityConfig & { fingersCrossed?: boolean | Partial<FingersCrossedConfig> }> = {}) {
+  constructor(name: string, options: LoggerOptions = {}) {
     this.name = name
-    this.config = { ...defaultConfig, ...options }
+    this.options = options
+
+    // Handle config options
+    const configOptions = { ...options }
+    const hasTimestamp = options.timestamp !== undefined
+    if (hasTimestamp) {
+      delete configOptions.timestamp // Remove from config to avoid type error
+    }
+
+    this.config = {
+      ...defaultConfig,
+      ...configOptions,
+      timestamp: hasTimestamp || defaultConfig.timestamp,
+    }
     this.timers = new Map()
     this.subLoggers = new Map()
     this.formatter = this.config.format === 'json'
@@ -85,28 +101,33 @@ export class Logger {
     if (typeof this.config.rotation === 'boolean')
       return
     const keyRotation = this.config.rotation.keyRotation
-    if (!keyRotation?.enabled)
+    if (!keyRotation?.enabled || !keyRotation.interval || !keyRotation.maxKeys)
       return
 
     // Generate initial key
     const initialKeyId = this.generateKeyId()
+    const timestamp = typeof this.config.timestamp === 'string' || typeof this.config.timestamp === 'number'
+      ? new Date(this.config.timestamp)
+      : new Date()
+
     this.encryptionKeys.set(initialKeyId, {
       key: this.generateKey(),
-      createdAt: new Date(),
+      createdAt: timestamp,
     })
 
-    // Setup key rotation interval
-    const interval = keyRotation.interval * 24 * 60 * 60 * 1000
+    // Set up key rotation interval
     this.keyRotationTimeout = setInterval(() => {
-      this.rotateKeys()
-    }, interval)
+      this.rotateKeys().catch((error) => {
+        console.error('Error rotating keys:', error)
+      })
+    }, keyRotation.interval * 1000)
   }
 
   private async rotateKeys(): Promise<void> {
     if (typeof this.config.rotation === 'boolean')
       return
     const keyRotation = this.config.rotation.keyRotation
-    if (!keyRotation?.enabled)
+    if (!keyRotation?.enabled || !keyRotation.maxKeys)
       return
 
     // Generate new key
@@ -134,9 +155,28 @@ export class Logger {
     return randomBytes(32)
   }
 
+  getCurrentKey(): { key: Buffer, id: string } {
+    if (this.encryptionKeys.size === 0) {
+      const id = this.generateKeyId()
+      const key = this.generateKey()
+      this.encryptionKeys.set(id, { key, createdAt: new Date() })
+      return { key, id }
+    }
+
+    // Get the newest key
+    const [id, { key }] = Array.from(this.encryptionKeys.entries())
+      .sort(([, a], [, b]) => b.createdAt.getTime() - a.createdAt.getTime())[0]
+
+    return { key, id }
+  }
+
+  setEncryptionKey(id: string, key: Buffer): void {
+    this.encryptionKeys.set(id, { key, createdAt: new Date() })
+  }
+
   private getEncryptionOptions(): EncryptionConfig {
     if (!this.config.rotation || typeof this.config.rotation === 'boolean'
-      || this.config.rotation.encrypt === false) {
+      || !this.config.rotation.encrypt) {
       return {}
     }
 
@@ -146,7 +186,6 @@ export class Logger {
     }
 
     if (typeof this.config.rotation.encrypt === 'object') {
-      // Type guard to ensure we're working with EncryptionConfig
       const encryptConfig: EncryptionConfig = this.config.rotation.encrypt
       return {
         ...defaultOptions,
@@ -159,11 +198,11 @@ export class Logger {
 
   private async compressData(data: Buffer): Promise<Buffer> {
     return new Promise<Buffer>((resolve, reject) => {
-      const chunks: Uint8Array[] = []
+      const chunks: Buffer[] = []
       const gzip = createGzip()
 
-      gzip.on('data', (chunk: Uint8Array) => chunks.push(chunk))
-      gzip.on('end', () => resolve(Buffer.from(Buffer.concat(chunks))))
+      gzip.on('data', (chunk: Buffer) => chunks.push(chunk))
+      gzip.on('end', () => resolve(Buffer.concat(chunks)))
       gzip.on('error', reject)
 
       gzip.end(data)
@@ -181,21 +220,6 @@ export class Logger {
 
       gunzip.end(data)
     })
-  }
-
-  private getCurrentKey(): { key: Buffer, id: string } {
-    if (this.encryptionKeys.size === 0) {
-      const id = this.generateKeyId()
-      const key = this.generateKey()
-      this.encryptionKeys.set(id, { key, createdAt: new Date() })
-      return { key, id }
-    }
-
-    // Get the newest key
-    const [id, { key }] = Array.from(this.encryptionKeys.entries())
-      .sort(([, a], [, b]) => b.createdAt.getTime() - a.createdAt.getTime())[0]
-
-    return { key, id }
   }
 
   private generateLogFilename(): string {
@@ -265,59 +289,163 @@ export class Logger {
     }
   }
 
+  private getEncryptionKey(): Buffer {
+    console.error('Getting encryption key')
+    const key = createHash('sha256')
+      .update(String(process.env.LOG_ENCRYPTION_KEY || 'default-key'))
+      .digest()
+    console.error('Generated key length:', key.length)
+    return key
+  }
+
   private async encrypt(data: string): Promise<string> {
-    if (!this.config.rotation || typeof this.config.rotation === 'boolean' || !this.config.rotation.encrypt)
+    const encryptConfig = this.getEncryptionOptions()
+    if (!Object.keys(encryptConfig).length) {
+      console.error('No encryption config, returning raw data')
       return data
+    }
 
+    // Process data - compress if configured
     let processedData = Buffer.from(data, 'utf8')
-    const encryptConfig = typeof this.config.rotation.encrypt === 'object' ? this.config.rotation.encrypt : {}
+    if (encryptConfig.compress) {
+      console.error('Compressing data before encryption')
+      processedData = await this.compressData(processedData)
+    }
 
-    // Handle compression if enabled
-    if (encryptConfig.compress)
-      processedData = Buffer.from(await this.compressData(processedData))
-
-    const key = this.getEncryptionKey()
+    const { key, id } = this.getCurrentKey()
+    console.error('Got encryption key, length:', key.length)
     const iv = randomBytes(16)
-    const cipher = createCipheriv('aes-256-cbc', key, iv)
-    const encrypted = Buffer.concat([
-      cipher.update(processedData),
-      cipher.final(),
-    ])
+    const algorithm = encryptConfig.algorithm || 'aes-256-cbc'
+    console.error('Using algorithm:', algorithm)
 
-    return JSON.stringify({
-      iv: iv.toString('hex'),
-      data: encrypted.toString('base64'),
-      compressed: encryptConfig.compress || false,
-    })
+    try {
+      const cipher = createCipheriv(algorithm, key, iv)
+      let encrypted: Buffer
+
+      if (algorithm === 'aes-256-gcm') {
+        console.error('Using GCM encryption')
+        const gcmCipher = cipher as CipherGCM
+        encrypted = Buffer.concat([
+          gcmCipher.update(processedData),
+          gcmCipher.final(),
+        ])
+        const authTag = gcmCipher.getAuthTag()
+        encrypted = Buffer.concat([encrypted, authTag])
+      }
+      else {
+        console.error('Using CBC encryption')
+        encrypted = Buffer.concat([
+          cipher.update(processedData),
+          cipher.final(),
+        ])
+      }
+
+      const result = JSON.stringify({
+        iv: iv.toString('hex'),
+        data: encrypted.toString('base64'),
+        compressed: encryptConfig.compress || false,
+        algorithm,
+        keyId: id,
+      })
+      console.error('Encrypted result length:', result.length)
+      return result
+    }
+    catch (error) {
+      console.error('Encryption error:', error)
+      throw error
+    }
   }
 
   async decrypt(encryptedData: string): Promise<string> {
-    if (!this.config.rotation || typeof this.config.rotation === 'boolean' || !this.config.rotation.encrypt)
+    const encryptConfig = this.getEncryptionOptions()
+    if (!Object.keys(encryptConfig).length) {
+      console.error('encryption not configured, returning raw data')
       return encryptedData
+    }
 
     try {
-      const { iv, data, compressed } = JSON.parse(encryptedData)
-      const key = this.getEncryptionKey()
+      const { iv, data, compressed, algorithm = 'aes-256-cbc', keyId } = JSON.parse(encryptedData)
+      console.error('parsed encrypted data:', {
+        iv,
+        compressed,
+        algorithm,
+        keyId,
+      })
 
-      const decipher = createDecipheriv(
-        'aes-256-cbc',
-        key,
-        Buffer.from(iv, 'hex'),
-      )
+      // Get the key used for encryption
+      let key: Buffer
+      if (keyId) {
+        // Try to get the key from the rotation system
+        const storedKey = this.encryptionKeys.get(keyId)
+        if (storedKey) {
+          key = storedKey.key
+        }
+        else {
+          // If key not found, try current key as fallback
+          const currentKey = this.getCurrentKey()
+          key = currentKey.key
+        }
+      }
+      else {
+        // If no keyId, use current key
+        const currentKey = this.getCurrentKey()
+        key = currentKey.key
+      }
+      console.error('got encryption key')
 
-      let decrypted = Buffer.concat([
-        decipher.update(Buffer.from(data, 'base64')),
-        decipher.final(),
-      ])
+      // Convert IV from hex to buffer
+      const ivBuffer = Buffer.from(iv, 'hex')
+      const encryptedBuffer = Buffer.from(data, 'base64')
 
-      // Handle decompression if the data was compressed
-      if (compressed)
-        decrypted = Buffer.from(await this.decompressData(decrypted))
+      let decryptedBuffer: Buffer
+      if (algorithm === 'aes-256-gcm') {
+        console.error('using GCM decryption')
+        console.error('encrypted buffer length:', encryptedBuffer.length)
+        const authTagLength = 16
+        console.error('auth tag length:', authTagLength)
+        const encryptedContent = encryptedBuffer.subarray(0, encryptedBuffer.length - authTagLength)
+        console.error('encrypted data length:', encryptedContent.length)
+        const authTag = encryptedBuffer.subarray(encryptedBuffer.length - authTagLength)
 
-      return decrypted.toString('utf8')
+        const decipher = createDecipheriv(algorithm, key, ivBuffer)
+        decipher.setAuthTag(authTag)
+        decryptedBuffer = Buffer.concat([
+          decipher.update(encryptedContent),
+          decipher.final(),
+        ])
+      }
+      else {
+        const decipher = createDecipheriv(algorithm, key, ivBuffer)
+        decryptedBuffer = Buffer.concat([
+          decipher.update(encryptedBuffer),
+          decipher.final(),
+        ])
+      }
+
+      console.error('decrypted buffer length:', decryptedBuffer.length)
+      console.error('decrypted data')
+
+      // Decompress if needed
+      if (compressed) {
+        console.error('decompressing data')
+        decryptedBuffer = await this.decompressData(decryptedBuffer)
+        console.error('decompressed buffer length:', decryptedBuffer.length)
+      }
+
+      const decryptedResult = decryptedBuffer.toString('utf8')
+      console.error('decrypted result:', decryptedResult)
+
+      // Extract message from log entry
+      const match = decryptedResult.match(/\[test\]\s+([^\n]+)/)
+      if (match) {
+        console.error('Extracted message:', match[1])
+      }
+
+      return decryptedResult
     }
     catch (error) {
-      throw new Error(`Failed to decrypt log data: ${error instanceof Error ? error.message : String(error)}`)
+      console.error('Error decrypting log data:', error)
+      throw error
     }
   }
 
@@ -335,7 +463,15 @@ export class Logger {
 
     // Check file size rotation
     if (config.maxSize && stats.size >= config.maxSize) {
+      const oldFile = this.currentLogFile
       const newFile = this.generateLogFilename()
+
+      // Rename the old file to include a timestamp
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
+      const rotatedFile = oldFile.replace(/\.log$/, `-${timestamp}.log`)
+      await rename(oldFile, rotatedFile)
+
+      // Set the new file as current
       this.currentLogFile = newFile
 
       // Cleanup old files if maxFiles is set
@@ -362,9 +498,6 @@ export class Logger {
     let interval: number
 
     switch (config.frequency) {
-      case 'hourly':
-        interval = 60 * 60 * 1000
-        break
       case 'daily':
         interval = 24 * 60 * 60 * 1000
         break
@@ -394,38 +527,65 @@ export class Logger {
     return levels[level] >= levels[this.config.level]
   }
 
-  private async writeToFile(formattedEntry: string): Promise<void> {
+  private async writeToFile(data: string): Promise<void> {
     if (isBrowserProcess())
       return
 
-    const isServer = await isServerProcess()
-    if (!isServer)
-      return
+    try {
+      // Ensure log directory exists
+      await mkdir(this.config.logDirectory, { recursive: true })
 
-    await mkdir(this.config.logDirectory, { recursive: true })
+      // Ensure current log file is set
+      this.currentLogFile = this.generateLogFilename()
 
-    const encryptedData = await this.encrypt(formattedEntry)
-    await writeFile(this.currentLogFile, `${encryptedData}\n`, { flag: 'a' })
+      // Encrypt data if configured
+      const encryptedData = await this.encrypt(data)
+      console.error('Encrypted data length:', encryptedData?.length || 0)
 
-    void this.rotateLog()
+      // Check if we need to rotate before writing
+      await this.rotateLog()
+
+      // Create an empty file if it doesn't exist
+      if (!(await stat(this.currentLogFile).catch(() => null))) {
+        await writeFile(this.currentLogFile, '')
+      }
+
+      // Append to current log file with newline
+      await appendFile(this.currentLogFile, `${encryptedData}\n`)
+      console.error('Encrypted data written to file:', this.currentLogFile)
+
+      // Get file stats for debugging
+      const stats = await stat(this.currentLogFile)
+      console.error('File size after write:', stats.size)
+    }
+    catch (error) {
+      console.error('Error in writeToFile:', error)
+      throw error
+    }
   }
 
   private async log(level: LogLevel, message: string, ...args: any[]): Promise<(() => void) | void> {
-    if (!this.shouldLog(level))
+    console.error('log method called with level:', level, 'message:', message)
+    if (!this.shouldLog(level)) {
+      console.error('shouldLog returned false')
       return
+    }
 
     const entry: LogEntry = {
-      timestamp: new Date(),
+      timestamp: this.options.timestamp ? new Date(this.options.timestamp) : new Date(),
       level,
       message,
       args,
       name: this.name,
     }
 
+    console.error('Created log entry:', entry)
     const formattedEntry = await this.formatter.format(entry)
+    console.error('formatted entry:', formattedEntry)
 
     // Handle fingers crossed logging if enabled
     if (this.fingersCrossedConfig) {
+      console.error('using fingers crossed logging')
       await this.handleFingersCrossedBuffer(level, formattedEntry)
       return
     }
@@ -437,7 +597,14 @@ export class Logger {
 
       // eslint-disable-next-line no-console
       console.log(formattedEntry)
-      void this.writeToFile(formattedEntry)
+      console.error('calling writeToFile for info level')
+      try {
+        await this.writeToFile(formattedEntry)
+        console.error('writeToFile completed successfully for info level')
+      }
+      catch (error) {
+        console.error('Error in writeToFile for info level:', error)
+      }
 
       return () => {
         const startTime = this.timers.get(timerId)
@@ -451,36 +618,51 @@ export class Logger {
 
     // eslint-disable-next-line no-console
     console.log(formattedEntry)
-    void this.writeToFile(formattedEntry)
+    console.error('calling writeToFile')
+    try {
+      await this.writeToFile(formattedEntry)
+      console.error('writeToFile completed successfully')
+    }
+    catch (error) {
+      console.error('Error in writeToFile:', error)
+    }
   }
 
   debug(message: string, ...args: any[]): void {
-    void this.log('debug', message, ...args)
+    this.log('debug', message, ...args)
   }
 
-  info(message: string, ...args: any[]): Promise<(() => void) | void> {
-    return this.log('info', message, ...args)
+  info(message: string, ...args: any[]): void {
+    this.log('info', message, ...args)
   }
 
   success(message: string, ...args: any[]): void {
-    void this.log('success', message, ...args)
+    this.log('success', message, ...args)
   }
 
-  warning(message: string, ...args: any[]): void {
-    void this.log('warning', message, ...args)
+  warn(message: string, ...args: any[]): void {
+    this.log('warning', message, ...args)
   }
 
   error(message: string, ...args: any[]): void {
-    void this.log('error', message, ...args)
+    this.log('error', message, ...args)
   }
 
   extend(namespace: string): Logger {
     const subLoggerName = `${this.name}:${namespace}`
 
     if (!this.subLoggers.has(subLoggerName)) {
+      const subLoggerOptions: LoggerOptions = {
+        ...this.options,
+        logDirectory: this.config.logDirectory,
+        level: this.config.level,
+        format: this.config.format,
+        rotation: typeof this.config.rotation === 'boolean' ? undefined : this.config.rotation,
+      }
+
       this.subLoggers.set(
         subLoggerName,
-        new Logger(subLoggerName, this.config),
+        new Logger(subLoggerName, subLoggerOptions),
       )
     }
 
@@ -490,15 +672,6 @@ export class Logger {
   only(fn: () => void): void {
     if (process.env.DEBUG?.includes(this.name) || process.env.DEBUG === '*')
       fn()
-  }
-
-  private getEncryptionKey(): Buffer {
-    return Buffer.from(
-      createHash('sha256')
-        .update(String(process.env.LOG_ENCRYPTION_KEY || 'default-key'))
-        .digest('base64')
-        .slice(0, 32),
-    )
   }
 
   async readLog(filePath: string): Promise<LogEntry[]> {
@@ -757,5 +930,34 @@ export class Logger {
 
     if (this.keyRotationTimeout)
       clearInterval(this.keyRotationTimeout)
+
+    this.timers.clear()
+  }
+
+  time(label: string): () => void {
+    const start = Date.now()
+    this.timers.set(label, start)
+
+    return () => {
+      const end = Date.now()
+      const duration = end - this.timers.get(label)!
+      this.info(`${label} completed in ${duration}ms`)
+      this.timers.delete(label)
+    }
+  }
+
+  createReadStream(): Readable {
+    if (!this.config.logDirectory) {
+      throw new Error('Log directory not configured')
+    }
+    return createReadStream(this.config.logDirectory)
+  }
+
+  get isServer(): boolean {
+    return typeof window === 'undefined'
+  }
+
+  get isBrowser(): boolean {
+    return !this.isServer
   }
 }

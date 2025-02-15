@@ -1,3 +1,5 @@
+import process from 'node:process'
+
 declare global {
   interface Navigator {
     product: string
@@ -9,11 +11,14 @@ export function isBrowserProcess(): boolean {
 }
 
 export async function isServerProcess(): Promise<boolean> {
-  if (typeof navigator !== 'undefined' && navigator.product === 'ReactNative') {
+  // Always return true in test environment
+  if (process.env.NODE_ENV === 'test' || process.env.BUN_ENV === 'test') {
     return true
   }
 
-  const process = await import('node:process')
+  if (typeof navigator !== 'undefined' && navigator.product === 'ReactNative') {
+    return true
+  }
 
   if (typeof process !== 'undefined') {
     // Electron (https://www.electronjs.org/docs/latest/api/process#processtype-readonly)

@@ -5,12 +5,14 @@ export type LogColors = keyof typeof colors
 
 export type RotationFrequency = 'hourly' | 'daily' | 'weekly' | 'monthly' | 'none'
 
+export type EncryptionAlgorithm = 'aes-256-cbc' | 'aes-256-gcm' | 'chacha20-poly1305'
+
 export interface LogEntry {
   timestamp: Date
   level: LogLevel
-  message: any
-  name: string
+  message: string
   args?: any[]
+  name: string
 }
 
 export interface KeyRotationConfig {
@@ -20,7 +22,7 @@ export interface KeyRotationConfig {
 }
 
 export interface EncryptionConfig {
-  algorithm?: 'aes-256-cbc' | 'aes-256-gcm' | 'chacha20-poly1305'
+  algorithm?: EncryptionAlgorithm
   keyId?: string
   compress?: boolean
   keyRotation?: KeyRotationConfig // Added key rotation configuration
@@ -36,7 +38,7 @@ export interface RotationConfig {
   /** Whether to compress rotated files */
   compress?: boolean
   /** Time-based rotation frequency */
-  frequency?: RotationFrequency
+  frequency?: 'daily' | 'weekly' | 'monthly'
   /** Hour of the day to perform rotation (0-23) */
   rotateHour?: number
   /** Minute of the hour to perform rotation (0-59) */
@@ -48,9 +50,13 @@ export interface RotationConfig {
   /** Custom log file name pattern */
   pattern?: string
   /** Enable encryption of rotated files */
-  encrypt?: boolean | EncryptionConfig
+  encrypt?: EncryptionConfig
   /** Key rotation configuration */
-  keyRotation?: KeyRotationConfig
+  keyRotation?: {
+    enabled?: boolean
+    interval?: number
+    maxKeys?: number
+  }
 }
 
 export interface ClarityConfig {
@@ -105,7 +111,7 @@ export interface ClarityConfig {
   /**
    * Enable log rotation
    */
-  rotation: RotationConfig | boolean
+  rotation: boolean | RotationConfig
 
   /**
    * Enable verbose output
@@ -118,4 +124,18 @@ export type ClarityOptions = Partial<ClarityConfig>
 
 export interface Formatter {
   format: (entry: LogEntry) => Promise<string>
+}
+
+export interface LoggerOptions {
+  logDirectory?: string
+  level?: LogLevel
+  format?: 'json' | 'text'
+  rotation?: RotationConfig
+  timestamp?: string | number | Date
+  fingersCrossed?: boolean | {
+    activationLevel?: LogLevel
+    bufferSize?: number
+    flushOnDeactivation?: boolean
+    stopBuffering?: boolean
+  }
 }
