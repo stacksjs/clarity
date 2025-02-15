@@ -12,25 +12,25 @@
 
 ## Features
 
-- 🚀 High-Performance Logging
-- 🎯 Domain-Specific Namespaces
-- 🤞 Fingers-Crossed Log Buffering
-- 🔄 Automatic Log Rotation & Cleanup
-- 🔐 Encrypted Log Storage
+- 🚀 **Performance** _High-Performance Logging_
+- 🎯 **Domain-Specific** _Domain-Specific Namespaces_
+- 🤞 **Buffering** _Fingers-Crossed Log Buffering_
+- 🔄 **Rotation** _Automatic Log Rotation & Cleanup_
+- 🔐 **Encryption** _Encrypted Log Storage_
 
 ### Output & Formatting
 
-- 🎨 Rich Color-Coded Console Output
-- 📊 Multiple Log Levels _(debug, info, success, warn, error)_
-- 🔠 Format String Support _(%s, %d, %j, etc.)_
-- ⚡ Built-in Performance Tracking
+- 🎨 **Rich Color-Coded** _Console Output_
+- 📊 **Multiple Log Levels** _`debug`, `info`, `success`, `warn`, `error`_
+- 🔠 **Format String Support** _`%s`, `%d`, `%j`, etc._
+- ⚡ **Built-in Performance Tracking** _`start`, `end`, `time`_
 
 ### Platform Support
 
-- 🌐 Universal _(Browser + Server)_
-- 🛠️ CLI & Library APIs
-- 💻 First-Class TypeScript Support
-- 📦 Zero External Dependencies
+- 🌐 **Universal** _Browser & Server support_
+- 🛠️ **CLI & Library** _Access APIs via CLI or programmatically_
+- 💻 **Fully Typed** _First-Class TypeScript support_
+- 📦 **Lightweight** _Zero external dependencies_
 
 ## Install
 
