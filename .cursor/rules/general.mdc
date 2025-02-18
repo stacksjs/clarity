@@ -1,7 +1,0 @@
----
-description: General information
-globs: 
----
-# clarity
-
-`clarity` is a command-line & library logging client. Can be used on the server or in the browser. A modern `debug`, but for TypeScript, with ESM, and powered by Bun.

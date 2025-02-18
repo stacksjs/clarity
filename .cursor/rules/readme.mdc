@@ -1,0 +1,205 @@
+---
+description: General information based on the latest ./README.md content
+globs: 
+---
+Update it if APIs change:
+
+# clarity
+
+> A modern `debug` client for TypeScript, offering powerful logging capabilities with colored output, performance tracking, log rotation, and both CLI & library support.
+
+## Features
+
+- 🚀 **Performance** _High-Performance Logging_
+- 🎯 **Domain-Specific** _Domain-Specific Namespaces_
+- 🤞 **Buffering** _Fingers-Crossed Log Buffering_
+- 🔄 **Rotation** _Automatic Log Rotation & Cleanup_
+- 🔐 **Encryption** _Encrypted Log Storage_
+
+### Output & Formatting
+
+- 🎨 **Rich Color-Coded** _Console Output_
+- 📊 **Multiple Log Levels** _`debug`, `info`, `success`, `warn`, `error`_
+- 🔠 **Format String Support** _`%s`, `%d`, `%j`, etc._
+- ⚡ **Built-in Performance Tracking** _`start`, `end`, `time`_
+
+### Platform Support
+
+- 🌐 **Universal** _Browser & Server support_
+- 🛠️ **CLI & Library** _Access APIs via CLI or programmatically_
+- 💻 **Fully Typed** _First-Class TypeScript support_
+- 📦 **Lightweight** _Zero external dependencies_
+
+## Install
+
+```bash
+bun install @stacksjs/clarity
+npm install @stacksjs/clarity
+```
+
+## Get Started
+
+There are two ways of using clarity: _as a library or as a CLI._
+
+### Library
+
+Given the npm package is installed:
+
+```ts
+import { Logger } from 'clarity'
+
+// Configure the logger
+const logger = new Logger('parser', {
+  // Optional configuration
+  maxLogSize: 5 * 1024 * 1024, // 5MB
+
+  rotation: {
+    maxLogFiles: 10,
+    compress: true,
+  },
+
+  encrypted: true,
+})
+
+// Basic logging
+logger.info('Starting parser...')
+logger.success('Document parsed successfully')
+logger.warning('Legacy format detected')
+logger.error('Failed to parse document')
+
+// Performance tracking
+const end = logger.info('Starting expensive operation...')
+// ... do work ...
+end('Operation completed') // automatically includes time taken
+
+// Domain-specific logging
+const parseLogger = logger.extend('json')
+parseLogger.info('Parsing JSON...') // outputs with [parser:json] prefix
+
+// Debug mode
+logger.debug('Additional debug information')
+
+// Format string support
+logger.info('Found %d errors in %s', 3, 'document.txt')
+
+// Conditional execution
+logger.only(() => {
+  // Only runs when logging is enabled
+  logger.info('Additional diagnostics...')
+})
+```
+
+_To learn more about the Library usage, please refer to the [Library documentation](mdc:https:/stacks-clarity.netlify.app/library)._
+
+### CLI
+
+```bash
+# Watch logs in real-time
+clarity watch --level debug --name "parser:*"
+clarity watch --json --timestamp
+
+# Log a one-off message
+clarity log "Starting deployment" --level info --name "deploy"
+
+# Export logs to a file
+clarity export --format json --output logs.json --level error
+clarity export --start 2024-01-01 --end 2024-01-31
+
+# Show and follow last N lines
+clarity tail --lines 50 --level error --follow
+clarity tail --name "api:*"
+
+# Search through logs
+clarity search "error connecting to database" --level error
+clarity search "deployment" --start 2024-01-01 --case-sensitive
+
+# Clear log history
+clarity clear --level debug --before 2024-01-01
+clarity clear --name "temp:*"
+
+# Configure log rotation
+clarity config set --key maxLogSize --value 5242880  # 5MB
+clarity config set --key maxLogFiles --value 10
+clarity config set --key compressLogs --value true
+
+# Other configuration
+clarity config set --level debug
+clarity config list
+
+# Utility commands
+clarity --help    # Show help information
+clarity --version # Show version number
+```
+
+All commands support the following common options:
+
+- `--level`: Filter by log level (debug, info, warning, error)
+- `--name`: Filter by logger name (supports patterns like "parser:*")
+- `--verbose`: Enable verbose output
+
+#### Command Reference
+
+- `watch`: Monitor logs in real-time with filtering and formatting options
+- `log`: Send one-off log messages with specified level and name
+- `export`: Save logs to a file in various formats with date range filtering
+- `tail`: Show and optionally follow the last N lines of logs
+- `search`: Search through logs using patterns with date range and case sensitivity options
+- `clear`: Clear log history with level, name, and date filtering
+- `config`: Manage clarity configuration (get, set, list)
+
+_To learn more about the CLI usage, please refer to the [CLI documentation](mdc:https:/stacks-clarity.netlify.app/cli)._
+
+## Configuration
+
+Clarity can be configured programmatically, using environment variables, or through the CLI:
+
+### Programmatic Configuration
+
+```typescript
+import { Logger } from 'clarity'
+
+const logger = new Logger('app', {
+  // Log Levels
+  level: 'debug',
+  defaultName: 'app',
+  verbose: true,
+
+  // Output Format
+  format: 'json',
+  timestamp: true,
+  colors: true,
+
+  // Log Rotation
+  rotation: {
+    frequency: 'daily',
+    maxLogSize: 10 * 1024 * 1024, // 10MB
+    maxLogFiles: 5,
+    compress: true,
+  },
+
+  encrypt: true,
+  logDirectory: '~/.clarity/logs',
+})
+```
+
+### Environment Variables
+
+```bash
+# Enable logging
+DEBUG=true
+DEBUG=parser # enable specific logger
+DEBUG=parser:* # enable logger and all subdomains
+
+# Control log level
+LOG_LEVEL=debug # show all logs
+LOG_LEVEL=error # show only errors
+```
+
+### CLI Configuration
+
+```bash
+# Configure logging
+clarity config set --key level --value debug
+clarity config set --key maxLogSize --value 5242880 # 5MB
+```
+
