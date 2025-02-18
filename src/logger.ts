@@ -1,4 +1,4 @@
-import type { CipherGCM, DecipherGCM } from 'node:crypto'
+import type { CipherGCM } from 'node:crypto'
 import type { Readable } from 'node:stream'
 import type { ClarityConfig, EncryptionConfig, Formatter, LogEntry, LoggerOptions, LogLevel } from './types'
 import { Buffer } from 'node:buffer'
@@ -12,7 +12,7 @@ import { createGunzip, createGzip } from 'node:zlib'
 import { config as defaultConfig } from './config'
 import { JsonFormatter } from './formatters/json'
 import { TextFormatter } from './formatters/text'
-import { chunk, isBrowserProcess, isServerProcess } from './utils'
+import { chunk, isBrowserProcess } from './utils'
 
 interface EncryptionOptions {
   algorithm?: 'aes-256-cbc' | 'aes-256-gcm' | 'chacha20-poly1305'

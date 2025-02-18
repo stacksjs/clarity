@@ -4,7 +4,7 @@ import { join } from 'node:path'
 import { Logger } from '../src'
 
 const TEST_LOG_DIR = join(process.cwd(), 'test-logs-performance')
-const PERFORMANCE_TARGETS = {
+const _PERFORMANCE_TARGETS = {
   writeLatency: 5, // ms
   readLatency: 10, // ms
   writeThroughput: 10000, // entries per second

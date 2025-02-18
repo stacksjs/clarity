@@ -6,7 +6,7 @@ import { join } from 'node:path'
 const TEST_LOG_DIR = join(process.cwd(), 'test-logs-integration')
 
 describe('Logger Integration Tests', () => {
-  let logger: Logger
+  let _logger: Logger
 
   beforeAll(async () => {
     await mkdir(TEST_LOG_DIR, { recursive: true })
