@@ -50,7 +50,7 @@ export interface RotationConfig {
   /** Custom log file name pattern */
   pattern?: string
   /** Enable encryption of rotated files */
-  encrypt?: EncryptionConfig
+  encrypt?: EncryptionConfig | boolean
   /** Key rotation configuration */
   keyRotation?: {
     enabled?: boolean

@@ -31,7 +31,7 @@ export class JsonFormatter implements Formatter {
     return {
       userAgent: navigator.userAgent,
       hostname: window.location.hostname || 'browser',
-      environment: process.env.NODE_ENV || 'development',
+      environment: process.env.NODE_ENV || process.env.BUN_ENV || 'development',
       viewport: {
         width: window.innerWidth,
         height: window.innerHeight,

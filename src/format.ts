@@ -20,16 +20,14 @@ function serializePositional(positional: any, flag: string): any {
     // Objects
     case 'o': {
       // Preserve stings to prevent extra quotes around them
-      if (typeof positional === 'string') {
+      if (typeof positional === 'string')
         return positional
-      }
 
       const json = JSON.stringify(positional)
 
       // If the positional isn't serializable, return it as-is
-      if (json === '{}' || json === '[]' || /^\[object .+?\]$/.test(json)) {
+      if (json === '{}' || json === '[]' || /^\[object .+?\]$/.test(json))
         return positional
-      }
 
       return json
     }
@@ -37,9 +35,8 @@ function serializePositional(positional: any, flag: string): any {
 }
 
 export function format(message: string, ...positionals: any[]): string {
-  if (positionals.length === 0) {
+  if (positionals.length === 0)
     return message
-  }
 
   let positionalIndex = 0
   let formattedMessage = message.replace(
@@ -58,9 +55,8 @@ export function format(message: string, ...positionals: any[]): string {
   )
 
   // Append unresolved positionals to string as-is
-  if (positionalIndex < positionals.length) {
+  if (positionalIndex < positionals.length)
     formattedMessage += ` ${positionals.slice(positionalIndex).join(' ')}`
-  }
 
   formattedMessage = formattedMessage.replace(/%{2}/g, '%')
 
