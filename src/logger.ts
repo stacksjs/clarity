@@ -202,7 +202,11 @@ export class Logger {
       const gzip = createGzip()
 
       gzip.on('data', (chunk: Buffer) => chunks.push(chunk))
-      gzip.on('end', () => resolve(Buffer.concat(chunks)))
+      gzip.on('end', () => {
+        const concatenated = Buffer.concat(chunks)
+        // Create a new Buffer from the concatenated one to ensure correct backing type
+        resolve(Buffer.from(concatenated))
+      })
       gzip.on('error', reject)
 
       gzip.end(data)
@@ -309,7 +313,8 @@ export class Logger {
     let processedData = Buffer.from(data, 'utf8')
     if (encryptConfig.compress) {
       console.error('Compressing data before encryption')
-      processedData = await this.compressData(processedData)
+      const compressedData = await this.compressData(processedData)
+      processedData = Buffer.from(compressedData)
     }
 
     const { key, id } = this.getCurrentKey()
@@ -950,7 +955,19 @@ export class Logger {
     if (!this.config.logDirectory) {
       throw new Error('Log directory not configured')
     }
-    return createReadStream(this.config.logDirectory)
+
+    // Use the existing currentLogFile instead of regenerating it
+    try {
+      console.error(`Creating read stream for file: ${this.currentLogFile}`)
+      return createReadStream(this.currentLogFile, {
+        encoding: 'utf8',
+        highWaterMark: 64 * 1024, // 64KB buffer
+      })
+    }
+    catch (error) {
+      console.error(`Failed to create read stream: ${error instanceof Error ? error.message : String(error)}`)
+      throw error
+    }
   }
 
   get isServer(): boolean {

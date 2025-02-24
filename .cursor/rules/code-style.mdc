@@ -1,6 +1,7 @@
 ---
 description: Code Style & Structure specifics
 globs: 
+alwaysApply: false
 ---
 ## Code Style & Structure
 
