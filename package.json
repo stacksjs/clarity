@@ -29,6 +29,10 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
+    "./browser": {
+      "types": "./dist/browser.d.ts",
+      "import": "./dist/browser.js"
+    },
     "./*": {
       "import": "./dist/*"
     }
@@ -67,7 +71,7 @@
     "@types/bun": "^1.2.3",
     "bumpp": "^10.0.3",
     "bun-plugin-dtsx": "^0.21.9",
-    "bunfig": "^0.8.0",
+    "bunfig": "^0.8.2",
     "changelogen": "^0.5.7",
     "lint-staged": "^15.4.3",
     "simple-git-hooks": "^2.11.1",
