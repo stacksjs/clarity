@@ -5,7 +5,7 @@ layout: home
 hero:
   name: "clarity"
   text: "Better logging & debugging."
-  tagline: "Modern and powerful logging for TypeScript."
+  tagline: "A modern TypeScript logging solution that just works."
   image: /images/logo-white.png
   actions:
     - theme: brand
@@ -16,30 +16,30 @@ hero:
       link: https://github.com/stacksjs/clarity
 
 features:
-  - title: "Rich Colored Output"
+  - title: "Beautiful Colored Output"
     icon: "🎨"
-    details: "Beautiful, readable logs with automatic color coding and formatting."
-  - title: "Performance Tracking"
+    details: "Instantly readable logs with smart color coding, formatting, and structured output. Supports both text and JSON formats."
+  - title: "Performance First"
     icon: "⚡"
-    details: "Built-in performance measurements for operations logging."
-  - title: "Debug Mode"
+    details: "Built-in performance tracking, operation timing, and high-throughput logging with buffering support."
+  - title: "Smart Debug Mode"
     icon: "🔍"
-    details: "Powerful debug mode with domain-specific logging support."
-  - title: "Multiple Log Levels"
+    details: "Domain-specific namespaces, conditional logging, and environment-aware debugging capabilities."
+  - title: "Production Ready"
     icon: "📊"
-    details: "Comprehensive log levels with success, warning, and error states."
-  - title: "CLI Tools"
+    details: "Multiple log levels, rotation, encryption, and structured logging for enterprise applications."
+  - title: "Powerful CLI"
     icon: "🛠"
-    details: "Full-featured CLI for log management and analysis."
-  - title: "Browser & Server"
+    details: "Real-time log watching, searching, exporting, and management through an intuitive CLI."
+  - title: "Universal Support"
     icon: "🌐"
-    details: "Works seamlessly in both browser and server environments."
-  - title: "Search & Analysis"
-    icon: "🔎"
-    details: "Advanced log searching and analysis capabilities."
-  - title: "Zero Config"
-    icon: "⚙️"
-    details: "Works out of the box with sensible defaults."
+    details: "Works seamlessly in Node.js, Bun, Deno, and browser environments with zero dependencies."
+  - title: "Developer Experience"
+    icon: "💻"
+    details: "First-class TypeScript support, intelligent autocompletion, and extensive documentation."
+  - title: "Battle Tested"
+    icon: "🛡️"
+    details: "Used in production by the entire Stacks.js ecosystem and numerous enterprise applications."
 ---
 
 <Home />

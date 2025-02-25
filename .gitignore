@@ -11,5 +11,5 @@ logs
 node_modules
 temp
 docs/.vitepress/cache
-test-logs/*
-test-logs-integration/*
+test-logs
+test-logs-*

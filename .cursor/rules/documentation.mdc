@@ -7,3 +7,11 @@ globs: docs/**/*.md
 - Write documentation for all functions, types, interfaces, and ensure examples are accurate
 - The `./docs` directory is where the vitepress markdown documentation is stored
 - Make sure to update the docs markdown files
+- VitePress documentation is in `./docs/*`
+- `.vitepress` folder lives at path `./docs/.vitepress`
+- Docs should have pages about:
+  - CLI Usage
+  - Configuration
+  - Installation
+  - Library Usage
+  - Usage

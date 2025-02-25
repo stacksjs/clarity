@@ -93,6 +93,140 @@ logger.only(() => {
 
 _To learn more about the Library usage, please refer to the [Library documentation](https://stacks-clarity.netlify.app/library)._
 
+### Common Usage Examples
+
+#### Basic Logging with Different Levels
+
+```ts
+import { Logger } from 'clarity'
+
+const logger = new Logger('app')
+
+// Different log levels
+await logger.debug('Debug information for developers')
+await logger.info('General information about application state')
+await logger.success('Operation completed successfully')
+await logger.warn('Warning: approaching rate limit')
+await logger.error('Failed to connect to database')
+```
+
+#### Performance Tracking
+
+```ts
+import { Logger } from 'clarity'
+
+const logger = new Logger('performance')
+
+// Track operation duration
+const end = logger.time('Starting database query')
+await db.query('SELECT * FROM users')
+await end() // Outputs: "Starting database query completed in 123ms"
+
+// Track multiple operations
+const end1 = logger.time('Operation 1')
+const end2 = logger.time('Operation 2')
+await Promise.all([
+  someAsyncOperation().then(end1),
+  anotherAsyncOperation().then(end2)
+])
+```
+
+#### Domain-Specific Logging
+
+```ts
+import { Logger } from 'clarity'
+
+const logger = new Logger('api')
+
+// Create sub-loggers for specific domains
+const authLogger = logger.extend('auth')
+const dbLogger = logger.extend('database')
+const cacheLogger = logger.extend('cache')
+
+await authLogger.info('User authenticated') // [api:auth] User authenticated
+await dbLogger.error('Connection failed') // [api:database] Connection failed
+await cacheLogger.debug('Cache miss') // [api:cache] Cache miss
+```
+
+#### Advanced Configuration
+
+```ts
+import { Logger } from 'clarity'
+
+const logger = new Logger('app', {
+  // Log level and format
+  level: 'debug',
+  format: 'json',
+  timestamp: new Date(),
+
+  // Log rotation settings
+  rotation: {
+    maxSize: 5 * 1024 * 1024, // 5MB
+    maxFiles: 10,
+    frequency: 'daily',
+    compress: true,
+  },
+
+  // Fingers-crossed buffering
+  fingersCrossed: {
+    activationLevel: 'error',
+    bufferSize: 50,
+    flushOnDeactivation: true,
+  }
+})
+```
+
+#### Structured Logging
+
+```ts
+import { Logger } from 'clarity'
+
+const logger = new Logger('api', { format: 'json' })
+
+// Log structured data
+await logger.info('User action', {
+  userId: 123,
+  action: 'login',
+  timestamp: new Date(),
+  metadata: {
+    ip: '192.168.1.1',
+    userAgent: 'Mozilla/5.0...'
+  }
+})
+
+// Log errors with stack traces
+try {
+  throw new Error('Database connection failed')
+}
+catch (error) {
+  await logger.error('Failed to execute query', {
+    error: error.message,
+    stack: error.stack,
+    query: 'SELECT * FROM users'
+  })
+}
+```
+
+#### Conditional Logging
+
+```ts
+import { Logger } from 'clarity'
+
+const logger = new Logger('app')
+
+// Only execute logging code if the level is enabled
+logger.only(() => {
+  const expensiveOperation = calculateSomething()
+  logger.debug('Operation result:', expensiveOperation)
+})
+
+// Conditional logging with levels
+if (logger.shouldLog('debug')) {
+  const metrics = gatherMetrics() // expensive operation
+  await logger.debug('System metrics:', metrics)
+}
+```
+
 ### CLI
 
 ```bash

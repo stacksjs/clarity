@@ -61,7 +61,7 @@ Choose the binary that matches your platform and architecture:
 
 ```sh [macOS (arm64)]
 # Download the binary
-curl -L https://github.com/stacksjs/clarity/releases/download/v0.9.1/clarity-darwin-arm64 -o clarity
+curl -L https://github.com/stacksjs/clarity/releases/download/v0.2.0/clarity-darwin-arm64 -o clarity
 
 # Make it executable
 chmod +x clarity
@@ -72,7 +72,7 @@ mv clarity /usr/local/bin/clarity
 
 ```sh [macOS (x64)]
 # Download the binary
-curl -L https://github.com/stacksjs/clarity/releases/download/v0.9.1/clarity-darwin-x64 -o clarity
+curl -L https://github.com/stacksjs/clarity/releases/download/v0.2.0/clarity-darwin-x64 -o clarity
 
 # Make it executable
 chmod +x clarity
@@ -83,7 +83,7 @@ mv clarity /usr/local/bin/clarity
 
 ```sh [Linux (arm64)]
 # Download the binary
-curl -L https://github.com/stacksjs/clarity/releases/download/v0.9.1/clarity-linux-arm64 -o clarity
+curl -L https://github.com/stacksjs/clarity/releases/download/v0.2.0/clarity-linux-arm64 -o clarity
 
 # Make it executable
 chmod +x clarity
@@ -94,7 +94,7 @@ mv clarity /usr/local/bin/clarity
 
 ```sh [Linux (x64)]
 # Download the binary
-curl -L https://github.com/stacksjs/clarity/releases/download/v0.9.1/clarity-linux-x64 -o clarity
+curl -L https://github.com/stacksjs/clarity/releases/download/v0.2.0/clarity-linux-x64 -o clarity
 
 # Make it executable
 chmod +x clarity
@@ -105,7 +105,7 @@ mv clarity /usr/local/bin/clarity
 
 ```sh [Windows (x64)]
 # Download the binary
-curl -L https://github.com/stacksjs/clarity/releases/download/v0.9.1/clarity-windows-x64.exe -o clarity.exe
+curl -L https://github.com/stacksjs/clarity/releases/download/v0.2.0/clarity-windows-x64.exe -o clarity.exe
 
 # Move it to your PATH (adjust the path as needed)
 move clarity.exe C:\Windows\System32\clarity.exe
