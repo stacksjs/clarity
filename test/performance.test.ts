@@ -2520,7 +2520,7 @@ describe('Logger Performance Tests', () => {
       })
 
       // Write initial log with current time
-      const initialTime = new Date('2023-01-01T12:00:00Z')
+      const initialTime = new Date('2025-01-01T12:00:00Z')
       timeHelper.setCurrentTime(initialTime)
       console.error(`Setting initial time to: ${initialTime.toISOString()}`)
 
@@ -2544,7 +2544,7 @@ describe('Logger Performance Tests', () => {
       }
 
       // Change the system clock forward
-      const forwardTime = new Date('2023-01-02T12:00:00Z') // 1 day forward
+      const forwardTime = new Date('2025-01-02T12:00:00Z') // 1 day forward
       timeHelper.setCurrentTime(forwardTime)
       console.error(`Changed time forward to: ${forwardTime.toISOString()}`)
 
@@ -2559,7 +2559,7 @@ describe('Logger Performance Tests', () => {
       await new Promise(resolve => setTimeout(resolve, 500))
 
       // Change the system clock backward
-      const backwardTime = new Date('2023-01-01T06:00:00Z') // Back to day 1, but earlier
+      const backwardTime = new Date('2025-01-01T06:00:00Z') // Back to day 1, but earlier
       timeHelper.setCurrentTime(backwardTime)
       console.error(`Changed time backward to: ${backwardTime.toISOString()}`)
 

@@ -759,7 +759,7 @@ describe('Logger', () => {
         })
 
         // Set a known date/time
-        const initialDate = new Date('2023-03-15T12:00:00Z')
+        const initialDate = new Date('2025-01-15T12:00:00Z')
         timeHelper.setCurrentTime(initialDate)
 
         // Write some logs on the initial date
@@ -769,7 +769,7 @@ describe('Logger', () => {
         await new Promise(resolve => setTimeout(resolve, 1000))
 
         // Advance time to the next day to trigger rotation
-        const nextDay = new Date('2023-03-16T12:00:00Z')
+        const nextDay = new Date('2025-01-16T12:00:00Z')
         timeHelper.setCurrentTime(nextDay)
 
         // Write logs on the next day
@@ -784,8 +784,8 @@ describe('Logger', () => {
         console.error(`Frequency rotation test files: ${files.join(', ')}`)
 
         // Examine file dates to verify rotation
-        const day1Pattern = /2023-03-15/
-        const day2Pattern = /2023-03-16/
+        const day1Pattern = /2025-01-15/
+        const day2Pattern = /2025-01-16/
 
         let hasDay1File = false
         let hasDay2File = false
@@ -1108,7 +1108,7 @@ describe('Logger', () => {
 
     it('should respect backpressure', async () => {
       // Set a fixed date for consistency
-      const testDate = new Date('2023-01-01T12:00:00Z')
+      const testDate = new Date('2025-01-01T12:00:00Z')
       timeHelper.setCurrentTime(testDate)
 
       // Write a smaller amount of data to prevent timeout
