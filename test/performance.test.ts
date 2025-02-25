@@ -3,7 +3,7 @@ import { createReadStream } from 'node:fs'
 import { mkdir, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { Logger } from '../src'
-import { FSHelper, PerformanceHelper, TestDataGenerator, TimeHelper } from './helpers'
+import { FSHelper, TimeHelper } from './helpers'
 
 const TEST_LOG_DIR = join(process.cwd(), 'test-logs-performance')
 const PERFORMANCE_TARGETS = {

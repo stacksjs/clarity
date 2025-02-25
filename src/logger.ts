@@ -11,20 +11,17 @@ import {
   fsyncSync,
   openSync,
   readdirSync,
-  readFileSync,
   statSync,
-  unlinkSync,
   writeFileSync,
   writeSync,
 } from 'node:fs'
-import { appendFile, mkdir, readdir, readFile, rename, stat, unlink, writeFile } from 'node:fs/promises'
+import { readdir, readFile, rename, stat, unlink, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import process from 'node:process'
 import { pipeline } from 'node:stream/promises'
 import { createGunzip, createGzip } from 'node:zlib'
 import { config as defaultConfig } from './config'
 import { JsonFormatter } from './formatters/json'
-import { PrettyFormatter } from './formatters/pretty'
 import { TextFormatter } from './formatters/text'
 import { chunk, isBrowserProcess } from './utils'
 
