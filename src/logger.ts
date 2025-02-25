@@ -22,7 +22,6 @@ import { join } from 'node:path'
 import process from 'node:process'
 import { pipeline } from 'node:stream/promises'
 import { createGunzip, createGzip } from 'node:zlib'
-import { loadConfig } from 'bunfig'
 import { config as defaultConfig } from './config'
 import { JsonFormatter } from './formatters/json'
 import { PrettyFormatter } from './formatters/pretty'
@@ -94,19 +93,6 @@ export class Logger {
     // Ensure log directory exists
     if (!this.config.logDirectory) {
       this.config.logDirectory = defaultConfig.logDirectory
-    }
-
-    // Suppress config loading message if not in verbose mode
-    if (!this.config.verbose && !process.env.CLARITY_VERBOSE) {
-      const originalConsoleError = console.error
-      console.error = () => {}
-      try {
-        // Force config loading here to suppress messages
-        void loadConfig({ name: 'clarity', defaultConfig })
-      }
-      finally {
-        console.error = originalConsoleError
-      }
     }
 
     this.timers = new Map()
