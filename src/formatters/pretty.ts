@@ -1,4 +1,5 @@
 import type { ClarityConfig, Formatter, LogEntry } from '../types'
+import process from 'node:process'
 import { format } from '../format'
 
 const COLORS = {
@@ -28,24 +29,44 @@ const COLORS = {
   bgWhite: '\x1B[47m',
   bold: '\x1B[1m',
   underline: '\x1B[4m',
+  gray: '\x1B[90m',
+} as const
+
+// Check if Unicode is supported
+function isUnicodeSupported(): boolean {
+  try {
+    return process.platform !== 'win32'
+      || Boolean(process.env.CI)
+      || Boolean(process.env.WT_SESSION) // Windows Terminal
+      || process.env.TERM_PROGRAM === 'vscode'
+      || process.env.TERM === 'xterm-256color'
+      || process.env.TERM === 'alacritty'
+  }
+  catch {
+    return false
+  }
 }
 
+const unicode = isUnicodeSupported()
+const s = (c: string, fallback: string) => (unicode ? c : fallback)
+
 const ICONS = {
-  debug: '🔍',
-  info: 'ℹ️',
-  success: '✅',
-  warning: '⚠️',
-  error: '❌',
-}
+  debug: s('🔍', 'D'),
+  info: s('ℹ️', 'i'),
+  success: s('✅', '√'),
+  warning: s('⚠️', '‼'),
+  error: s('❌', '×'),
+} as const
 
 interface LevelStyle {
   color: string
   label: string
   box?: boolean
+  bgColor?: string
 }
 
 const LEVEL_STYLES: Record<string, LevelStyle> = {
-  debug: { color: COLORS.dim + COLORS.white, label: 'DEBUG' },
+  debug: { color: COLORS.gray, label: 'DEBUG' },
   info: { color: COLORS.brightBlue, label: 'INFO' },
   success: { color: COLORS.brightGreen, label: 'SUCCESS' },
   warning: { color: COLORS.brightYellow, label: 'WARN', box: true },
@@ -77,6 +98,11 @@ function stripAnsi(str: string): string {
   }
 
   return result
+}
+
+// Calculate string width accounting for ANSI codes
+function stringWidth(str: string): number {
+  return stripAnsi(str).length
 }
 
 // Helper to create a box around text
@@ -122,6 +148,48 @@ function createBox(text: string, color: string, forFile: boolean = false): strin
   }
 }
 
+// Format text with character highlighting (backticks and underscores)
+function characterFormat(str: string): string {
+  return str
+    // highlight backticks
+    .replace(/`([^`]+)`/g, (_, m) => `${COLORS.cyan}${m}${COLORS.reset}`)
+    // underline underscores
+    .replace(/\s+_([^_]+)_\s+/g, (_, m) => ` ${COLORS.underline}${m}${COLORS.reset} `)
+}
+
+// Format stack traces
+function formatStack(stack: string, forFile: boolean = false): string {
+  if (!stack)
+    return ''
+
+  const lines = stack.split('\n')
+  const formattedLines = lines.map((line, i) => {
+    if (i === 0)
+      return line // Keep the first line as is
+
+    if (line.trim().startsWith('at ')) {
+      // Use a safer pattern to avoid backtracking issues
+      const atParts = line.trim().split(/^at\s+/)
+      if (atParts.length > 1) {
+        const funcLocationParts = atParts[1].split(' (')
+        if (funcLocationParts.length > 1) {
+          const fnName = funcLocationParts[0]
+          const location = funcLocationParts[1].replace(')', '')
+          return forFile
+            ? `  at ${fnName} (${location})`
+            : `  ${COLORS.dim}at ${COLORS.cyan}${fnName}${COLORS.dim} (${location})${COLORS.reset}`
+        }
+      }
+      return forFile
+        ? `  ${line.trim()}`
+        : `  ${COLORS.dim}${line.trim()}${COLORS.reset}`
+    }
+    return `  ${line}`
+  })
+
+  return formattedLines.join('\n')
+}
+
 export class PrettyFormatter implements Formatter {
   private config: ClarityConfig
   private terminalWidth: number
@@ -139,7 +207,7 @@ export class PrettyFormatter implements Formatter {
     const style = LEVEL_STYLES[level]
     const icon = ICONS[level]
 
-    // Format timestamp first for files
+    // Format timestamp
     const timestampStr = timestamp.toISOString()
     const formattedTimestamp = forFile
       ? timestampStr
@@ -162,32 +230,13 @@ export class PrettyFormatter implements Formatter {
     if (level === 'error' && formattedMessage.includes('\n')
       && (formattedMessage.includes('at ') || formattedMessage.includes('stack:'))) {
       // Format the stack trace with proper indentation and coloring
-      const lines = formattedMessage.split('\n')
-      const formattedLines = lines.map((line, i) => {
-        if (i === 0)
-          return line // Keep the first line as is
-
-        if (line.trim().startsWith('at ')) {
-          // Use a safer pattern to avoid backtracking issues
-          const atParts = line.trim().split(/^at\s+/)
-          if (atParts.length > 1) {
-            const funcLocationParts = atParts[1].split(' (')
-            if (funcLocationParts.length > 1) {
-              const fnName = funcLocationParts[0]
-              const location = funcLocationParts[1].replace(')', '')
-              return forFile
-                ? `  at ${fnName} (${location})`
-                : `  ${COLORS.dim}at ${COLORS.cyan}${fnName}${COLORS.dim} (${location})${COLORS.reset}`
-            }
-          }
-          return forFile
-            ? `  ${line.trim()}`
-            : `  ${COLORS.dim}${line.trim()}${COLORS.reset}`
-        }
-        return `  ${line}`
-      })
-
-      formattedContent = formattedLines.join('\n')
+      formattedContent = formatStack(formattedMessage, forFile)
+    }
+    else {
+      // Apply character formatting for normal messages
+      formattedContent = forFile
+        ? formattedContent
+        : characterFormat(formattedContent)
     }
 
     // For file output, construct message with timestamp at start
@@ -230,8 +279,8 @@ export class PrettyFormatter implements Formatter {
       const lines = logContent.split('\n')
 
       // Calculate right padding for timestamp on first line
-      const firstLineVisibleLength = stripAnsi(lines[0]).length
-      const timestampVisibleLength = stripAnsi(formattedTimestamp).length
+      const firstLineVisibleLength = stringWidth(lines[0])
+      const timestampVisibleLength = stringWidth(formattedTimestamp)
 
       // Calculate padding to push timestamp to the right
       const padding = Math.max(0, this.terminalWidth - firstLineVisibleLength - timestampVisibleLength - 1)
@@ -243,8 +292,8 @@ export class PrettyFormatter implements Formatter {
     }
     else {
       // Calculate right padding for timestamp
-      const logContentVisibleLength = stripAnsi(logContent).length
-      const timestampVisibleLength = stripAnsi(formattedTimestamp).length
+      const logContentVisibleLength = stringWidth(logContent)
+      const timestampVisibleLength = stringWidth(formattedTimestamp)
 
       // Calculate padding to push timestamp to the right
       const padding = Math.max(0, this.terminalWidth - logContentVisibleLength - timestampVisibleLength - 1)
@@ -254,7 +303,7 @@ export class PrettyFormatter implements Formatter {
     }
   }
 
-  // New method to format for file output (without ANSI colors)
+  // Format for file output (without ANSI colors)
   async formatForFile(entry: LogEntry): Promise<string> {
     return this.format(entry, true)
   }

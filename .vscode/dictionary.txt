@@ -1,3 +1,4 @@
+alacritty
 antfu
 biomejs
 booleanish
