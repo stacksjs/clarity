@@ -1,339 +1,358 @@
 # Library Guide
 
-This guide covers everything you need to know about using clarity as a library in your TypeScript _(or JavaScript)_ applications & libraries.
+This guide covers everything you need to know about using Clarity as a library in your TypeScript applications.
 
-## Basic Usage
-
-### Creating a Logger
+## Quick Start
 
 ```ts
 import { Logger } from 'clarity'
 
-// Create a new logger instance
+const logger = new Logger('app')
+await logger.info('Hello, Clarity!')
+```
+
+## Core Concepts
+
+### Logger Instance
+
+The `Logger` class is the main entry point:
+
+```ts
+import { Logger } from 'clarity'
+
+// Basic logger
 const logger = new Logger('app')
 
-// Basic logging
-logger.info('Application starting...')
-logger.success('Server started successfully')
-logger.warning('Resource usage high')
-logger.error('Failed to connect to database')
+// With configuration
+const configuredLogger = new Logger('app', {
+  level: 'debug',
+  format: 'json',
+  timestamp: true,
+})
+
+// Domain-specific logger
+const apiLogger = new Logger('api')
+const authLogger = apiLogger.extend('auth')
 ```
 
 ### Log Levels
 
-clarity supports multiple log levels for different use cases:
+Clarity supports five log levels, each with its own color and purpose:
 
 ```ts
-// Debug - for detailed information
-logger.debug('SQL Query:', query)
+// Debug - Gray (Detailed information for debugging)
+logger.debug('SQL Query:', { sql: 'SELECT * FROM users', params: [1, 2] })
 
-// Info - for general information
-logger.info('Processing request...')
+// Info - Blue (General information about application flow)
+logger.info('Processing request:', req.path)
 
-// Success - for successful operations
-logger.success('Email sent successfully')
+// Success - Green (Successful operations)
+logger.success('User registration completed')
 
-// Warning - for concerning but non-error situations
-logger.warning('Cache miss, falling back to database')
+// Warning - Yellow (Non-error issues that need attention)
+logger.warn('API rate limit at 80%')
 
-// Error - for error conditions
-logger.error('Failed to process payment')
+// Error - Red (Error conditions and failures)
+logger.error('Database connection failed:', error)
+```
+
+### Async Logging
+
+All logging methods return promises and can be awaited:
+
+```ts
+async function processUser(user: User) {
+  await logger.info('Starting user processing')
+
+  try {
+    await someAsyncOperation()
+    await logger.success('User processed successfully')
+  }
+  catch (error) {
+    await logger.error('Processing failed:', error)
+    throw error
+  }
+}
 ```
 
 ## Advanced Features
 
 ### Performance Tracking
 
-Track operation duration automatically:
+Track operation timing with built-in performance monitoring:
 
 ```ts
-const logger = new Logger('performance')
+// Simple timing
+const end = logger.time('Database query')
+const users = await db.users.find()
+await end() // Outputs: "Database query completed in 123ms"
 
-// Start tracking
-const end = logger.info('Starting database migration...')
+// Multiple concurrent operations
+const [authEnd, dbEnd] = [
+  logger.time('Authentication'),
+  logger.time('Database'),
+]
 
-// Perform work
-await runMigrations()
+await Promise.all([
+  authenticate().then(() => authEnd()),
+  queryDb().then(() => dbEnd()),
+])
 
-// End tracking - automatically includes duration
-end('Migration completed') // Output: Migration completed 1234.56ms
+// With operation context
+logger.time('API Request', async () => {
+  const response = await fetch('/api/users')
+  return response.json()
+})
 ```
 
-### Domain-specific Logging
+### Structured Logging
 
-Create specialized loggers for different parts of your application:
+Log structured data for better analysis:
 
 ```ts
-const logger = new Logger('api')
+// Basic structured data
+await logger.info('User action', {
+  userId: 123,
+  action: 'login',
+  timestamp: new Date(),
+})
 
-// Create domain-specific loggers
-const authLogger = logger.extend('auth')
-const dbLogger = logger.extend('db')
-const cacheLogger = logger.extend('cache')
+// With type safety
+interface AuditLog {
+  userId: number
+  action: string
+  resource: string
+  changes: Record<string, any>
+}
 
-// Usage
-authLogger.info('User authenticated') // Output: [api:auth] User authenticated
-dbLogger.warning('Slow query detected') // Output: [api:db] Slow query detected
-cacheLogger.error('Cache failure') // Output: [api:cache] Cache failure
+await logger.info<AuditLog>('Resource updated', {
+  userId: 123,
+  action: 'update',
+  resource: 'users',
+  changes: {
+    name: 'New Name',
+    role: 'admin',
+  },
+})
+```
+
+### Domain-Specific Logging
+
+Organize logs by domain for better clarity:
+
+```ts
+// Create domain hierarchy
+const logger = new Logger('app')
+const api = logger.extend('api')
+const auth = api.extend('auth')
+const db = api.extend('db')
+
+// Usage in different modules
+await auth.info('User authenticated') // [app:api:auth] User authenticated
+await db.warn('Slow query detected') // [app:api:db] Slow query detected
+
+// With metadata
+await auth.info('Login attempt', {
+  username: 'john',
+  ip: '192.168.1.1',
+  success: true,
+})
 ```
 
 ### Conditional Logging
 
-Execute logging code only when enabled:
+Control when logging code executes:
 
 ```ts
-const logger = new Logger('dev')
-
+// Only execute if logging is enabled
 logger.only(() => {
-  // This code only runs when logging is enabled
-  logger.debug('Current state:', {
-    memory: process.memoryUsage(),
-    cpu: process.cpuUsage()
-  })
-})
-```
-
-### Format Strings
-
-Use format strings for clean log messages:
-
-```ts
-logger.info('Found %d errors in %s', 3, 'user-service.ts')
-logger.debug('Query took %dms to execute', 123.45)
-logger.warning('Rate limit: %d/%d requests', 95, 100)
-```
-
-### Object & Error Logging
-
-clarity handles different types of data intelligently:
-
-```ts
-// Object logging
-logger.info({
-  user: 'john',
-  action: 'login',
-  timestamp: new Date()
+  const metrics = calculateExpensiveMetrics()
+  logger.debug('System metrics:', metrics)
 })
 
-// Error logging
-try {
-  throw new Error('Connection failed')
-}
-catch (error) {
-  logger.error('Database error:', error)
+// Level-specific conditions
+if (logger.shouldLog('debug')) {
+  const details = gatherDebugInfo()
+  await logger.debug('Debug info:', details)
 }
 
-// Array logging
-logger.debug('Active users:', ['john', 'jane', 'bob'])
-```
-
-## Browser Support
-
-clarity works seamlessly in both Node.js/Bun and browser environments:
-
-```ts
-// Browser usage
-const logger = new Logger('frontend')
-
-logger.info('Page loaded')
-logger.debug('Current route:', window.location.pathname)
-
-// Automatically detects environment and adjusts output
-```
-
-## Configuration
-
-### Environment Variables
-
-Control logging behavior with environment variables:
-
-```bash
-# Enable all logging
-DEBUG=true
-
-# Enable specific logger
-DEBUG=api:auth
-
-# Enable logger and all sub-loggers
-DEBUG=api:*
-
-# Set log level
-LOG_LEVEL=debug    # Show all logs
-LOG_LEVEL=error    # Show only errors
-```
-
-### Runtime Configuration
-
-Configure logger behavior programmatically:
-
-```ts
-import { config } from 'clarity'
-
-// Global configuration
-config.verbose = true
-
-// Logger-specific configuration
-const logger = new Logger('app', {
-  level: 'debug',
-  timestamp: true,
-  colors: true
+// Environment-based logging
+const devLogger = new Logger('dev', {
+  enabled: process.env.NODE_ENV !== 'production',
 })
-```
-
-## Best Practices
-
-### Organizing Loggers
-
-Structure your loggers to match your application architecture:
-
-```ts
-// services/auth.ts
-// api/users.ts
-import { authLogger } from '../services/auth'
-
-export const authLogger = new Logger('services:auth')
-
-// services/db.ts
-export const dbLogger = new Logger('services:db')
-const usersLogger = authLogger.extend('users')
 ```
 
 ### Error Handling
 
-Proper error logging patterns:
+Best practices for error logging:
 
 ```ts
-async function fetchUser(id: string) {
-  const logger = new Logger('api:users')
+try {
+  await riskyOperation()
+}
+catch (error) {
+  // Basic error logging
+  await logger.error('Operation failed:', error)
 
-  try {
-    logger.debug('Fetching user:', id)
-    const user = await db.users.findById(id)
-
-    if (!user) {
-      logger.warning('User not found:', id)
-      return null
-    }
-
-    logger.success('User fetched successfully')
-    return user
-  }
-  catch (error) {
-    logger.error('Failed to fetch user:', error)
-    throw error
-  }
+  // Structured error logging
+  await logger.error('Operation failed', {
+    error: {
+      message: error.message,
+      stack: error.stack,
+      code: error.code,
+    },
+    context: {
+      operation: 'riskyOperation',
+      inputs: { /* operation parameters */ },
+    },
+  })
 }
 ```
 
-### Performance Monitoring
+## TypeScript Integration
 
-Track performance across your application:
+### Type-Safe Logging
+
+Leverage TypeScript for safer logging:
 
 ```ts
-async function processQueue() {
-  const logger = new Logger('queue')
-  const end = logger.info('Processing queue items...')
-
-  let processed = 0
-  for (const item of queue) {
-    const itemEnd = logger.debug('Processing item:', item.id)
-    await processItem(item)
-    itemEnd('Item processed')
-    processed++
+// Define log message types
+interface UserLog {
+  userId: number
+  action: 'login' | 'logout' | 'register'
+  metadata: {
+    ip: string
+    userAgent: string
   }
-
-  end('Queue processing completed. Processed %d items', processed)
 }
+
+// Type-safe logging methods
+await logger.info<UserLog>('User action', {
+  userId: 123,
+  action: 'login',
+  metadata: {
+    ip: '192.168.1.1',
+    userAgent: 'Mozilla/5.0...',
+  },
+})
+
+// Custom log level types
+type CustomLevel = 'debug' | 'info' | 'error'
+const typedLogger = new Logger<CustomLevel>('app')
 ```
 
-## TypeScript Support
+### Framework Integration
 
-clarity is written in TypeScript and provides full type safety:
-
-```ts
-import type { Logger, LogLevel, LogOptions } from 'clarity'
-
-// Type-safe log levels
-function logAtLevel(level: LogLevel, message: string) {
-  const logger = new Logger('typed')
-  logger[level](message)
-}
-
-// Type-safe options
-const options: LogOptions = {
-  level: 'debug',
-  timestamp: true
-}
-
-const logger = new Logger('app', options)
-```
-
-## Integration Examples
-
-### Express Middleware
+#### Express Middleware
 
 ```ts
-import { Logger } from 'clarity'
-import express from 'express'
+import type { NextFunction, Request, Response } from 'express'
 
-const logger = new Logger('express')
+const requestLogger = new Logger('express')
 
-app.use((req, res, next) => {
-  const reqLogger = logger.extend(req.path)
-  const end = reqLogger.info('%s %s', req.method, req.path)
+app.use((req: Request, res: Response, next: NextFunction) => {
+  const end = requestLogger.time(`${req.method} ${req.path}`)
 
   res.on('finish', () => {
-    end('Response sent: %d', res.statusCode)
+    end({
+      method: req.method,
+      path: req.path,
+      status: res.statusCode,
+      duration: 'auto',
+    })
   })
 
   next()
 })
 ```
 
-### Vue Component
+#### Vue Component
 
 ```ts
 import type { Component } from 'vue'
 import { Logger } from 'clarity'
 
 export const MyComponent: Component = {
-  name: 'MyComponent',
   setup() {
     const logger = new Logger('vue:MyComponent')
 
-    logger.debug('Component created')
-
-    onMounted(() => {
-      logger.info('Component mounted')
+    onMounted(async () => {
+      await logger.debug('Component mounted')
     })
 
-    onUnmounted(() => {
-      logger.info('Component unmounted')
-    })
-  }
+    return {
+      async handleClick() {
+        await logger.info('Button clicked')
+      },
+    }
+  },
 }
 ```
 
-### React Hook
+## Best Practices
+
+### 1. Consistent Naming
 
 ```ts
-import { Logger } from 'clarity'
-import { useEffect } from 'react'
+// Use hierarchical naming
+const logger = new Logger('app')
+const apiLogger = logger.extend('api')
+const authLogger = apiLogger.extend('auth')
 
-function useLogger(name: string) {
-  const logger = new Logger(`react:${name}`)
-
-  useEffect(() => {
-    logger.debug('Component mounted')
-    return () => logger.debug('Component unmounted')
-  }, [])
-
-  return logger
-}
-
-function MyComponent() {
-  const logger = useLogger('MyComponent')
-
-  // Use logger in your component...
-}
+// Use descriptive names
+const paymentLogger = new Logger('payment:stripe')
+const emailLogger = new Logger('notifications:email')
 ```
+
+### 2. Structured Data
+
+```ts
+// Instead of string concatenation
+// ❌ Bad
+await logger.info(`User ${userId} performed ${action}`)
+
+// ✅ Good
+await logger.info('User action', { userId, action })
+```
+
+### 3. Error Context
+
+```ts
+// ❌ Bad
+await logger.error(error.message)
+
+// ✅ Good
+await logger.error('Operation failed', {
+  error: {
+    message: error.message,
+    stack: error.stack,
+    code: error.code,
+  },
+  context: {
+    operation: 'name',
+    input: { /* sanitized input */ },
+  },
+})
+```
+
+### 4. Performance Considerations
+
+```ts
+// Use conditional logging for expensive operations
+logger.only(() => {
+  const metrics = calculateExpensiveMetrics()
+  logger.debug('Metrics:', metrics)
+})
+
+// Buffer logs in high-throughput scenarios
+const logger = new Logger('high-traffic', {
+  bufferSize: 100,
+  flushInterval: '1s',
+})
+```
+
+## Next Steps
+
+- Explore [Configuration Options](./config) for customization
+- Learn about [CLI Tools](./cli) for log management
+- Check out [Examples](./examples) for more use cases
