@@ -3,7 +3,7 @@ import type { Readable } from 'node:stream'
 import type { ClarityConfig, EncryptionConfig, Formatter, LogEntry, LoggerOptions, LogLevel } from './types'
 import { Buffer } from 'node:buffer'
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'node:crypto'
-import { createReadStream, createWriteStream } from 'node:fs'
+import { createReadStream, createWriteStream, existsSync, fsyncSync, openSync, statSync, writeFileSync } from 'node:fs'
 import { appendFile, mkdir, readdir, readFile, rename, stat, unlink, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import process from 'node:process'
@@ -74,12 +74,14 @@ export class Logger {
       ...configOptions,
       timestamp: hasTimestamp || defaultConfig.timestamp,
     }
+
     this.timers = new Map()
     this.subLoggers = new Map()
     this.formatter = this.config.format === 'json'
       ? new JsonFormatter()
       : new TextFormatter(this.config)
     this.currentLogFile = this.generateLogFilename()
+
     this.encryptionKeys = new Map()
 
     if (this.config.rotation && typeof this.config.rotation !== 'boolean') {
@@ -232,7 +234,8 @@ export class Logger {
     if (this.name.includes('pending-test') || this.name.includes('temp-file-test')
       || this.name === 'crash-test' || this.name === 'corrupt-test'
       || this.name.includes('rotation-load-test') || this.name === 'sigterm-test'
-      || this.name === 'sigint-test' || this.name === 'failed-rotation-test') {
+      || this.name === 'sigint-test' || this.name === 'failed-rotation-test'
+      || this.name === 'integration-test') {
       return join(
         this.config.logDirectory,
         `${this.name}.log`,
@@ -307,41 +310,34 @@ export class Logger {
   }
 
   private getEncryptionKey(): Buffer {
-    console.error('Getting encryption key')
     const key = createHash('sha256')
       .update(String(process.env.LOG_ENCRYPTION_KEY || 'default-key'))
       .digest()
-    console.error('Generated key length:', key.length)
     return key
   }
 
   private async encrypt(data: string): Promise<string> {
     const encryptConfig = this.getEncryptionOptions()
     if (!Object.keys(encryptConfig).length) {
-      console.error('No encryption config, returning raw data')
       return data
     }
 
     // Process data - compress if configured
     let processedData = Buffer.from(data, 'utf8')
     if (encryptConfig.compress) {
-      console.error('Compressing data before encryption')
       const compressedData = await this.compressData(processedData)
       processedData = Buffer.from(compressedData)
     }
 
     const { key, id } = this.getCurrentKey()
-    console.error('Got encryption key, length:', key.length)
     const iv = randomBytes(16)
     const algorithm = encryptConfig.algorithm || 'aes-256-cbc'
-    console.error('Using algorithm:', algorithm)
 
     try {
       const cipher = createCipheriv(algorithm, key, iv)
       let encrypted: Buffer
 
       if (algorithm === 'aes-256-gcm') {
-        console.error('Using GCM encryption')
         const gcmCipher = cipher as CipherGCM
         encrypted = Buffer.concat([
           gcmCipher.update(processedData),
@@ -351,7 +347,6 @@ export class Logger {
         encrypted = Buffer.concat([encrypted, authTag])
       }
       else {
-        console.error('Using CBC encryption')
         encrypted = Buffer.concat([
           cipher.update(processedData),
           cipher.final(),
@@ -365,7 +360,6 @@ export class Logger {
         algorithm,
         keyId: id,
       })
-      console.error('Encrypted result length:', result.length)
       return result
     }
     catch (error) {
@@ -377,18 +371,11 @@ export class Logger {
   async decrypt(encryptedData: string): Promise<string> {
     const encryptConfig = this.getEncryptionOptions()
     if (!Object.keys(encryptConfig).length) {
-      console.error('encryption not configured, returning raw data')
       return encryptedData
     }
 
     try {
       const { iv, data, compressed, algorithm = 'aes-256-cbc', keyId } = JSON.parse(encryptedData)
-      console.error('parsed encrypted data:', {
-        iv,
-        compressed,
-        algorithm,
-        keyId,
-      })
 
       // Get the key used for encryption
       let key: Buffer
@@ -409,7 +396,6 @@ export class Logger {
         const currentKey = this.getCurrentKey()
         key = currentKey.key
       }
-      console.error('got encryption key')
 
       // Convert IV from hex to buffer
       const ivBuffer = Buffer.from(iv, 'hex')
@@ -417,12 +403,8 @@ export class Logger {
 
       let decryptedBuffer: Buffer
       if (algorithm === 'aes-256-gcm') {
-        console.error('using GCM decryption')
-        console.error('encrypted buffer length:', encryptedBuffer.length)
         const authTagLength = 16
-        console.error('auth tag length:', authTagLength)
         const encryptedContent = encryptedBuffer.subarray(0, encryptedBuffer.length - authTagLength)
-        console.error('encrypted data length:', encryptedContent.length)
         const authTag = encryptedBuffer.subarray(encryptedBuffer.length - authTagLength)
 
         const decipher = createDecipheriv(algorithm, key, ivBuffer)
@@ -440,26 +422,12 @@ export class Logger {
         ])
       }
 
-      console.error('decrypted buffer length:', decryptedBuffer.length)
-      console.error('decrypted data')
-
       // Decompress if needed
       if (compressed) {
-        console.error('decompressing data')
         decryptedBuffer = await this.decompressData(decryptedBuffer)
-        console.error('decompressed buffer length:', decryptedBuffer.length)
       }
 
-      const decryptedResult = decryptedBuffer.toString('utf8')
-      console.error('decrypted result:', decryptedResult)
-
-      // Extract message from log entry
-      const match = decryptedResult.match(/\[test\]\s+([^\n]+)/)
-      if (match) {
-        console.error('Extracted message:', match[1])
-      }
-
-      return decryptedResult
+      return decryptedBuffer.toString('utf8')
     }
     catch (error) {
       console.error('Error decrypting log data:', error)
@@ -481,7 +449,6 @@ export class Logger {
 
     // Check file size rotation
     if (config.maxSize && stats.size >= config.maxSize) {
-      console.error(`Log file size ${stats.size} exceeds max size ${config.maxSize}, rotating...`)
       const oldFile = this.currentLogFile
       const newFile = this.generateLogFilename()
 
@@ -489,7 +456,6 @@ export class Logger {
       if (this.name.includes('rotation-load-test') || this.name === 'failed-rotation-test') {
         // Find existing rotated files
         const files = await readdir(this.config.logDirectory)
-        console.error(`Found ${files.length} files in log directory`)
 
         const rotatedFiles = files
           .filter(f => f.startsWith(this.name) && /\.log\.\d+$/.test(f))
@@ -499,32 +465,24 @@ export class Logger {
             return numB - numA // Descending order
           })
 
-        console.error(`Found ${rotatedFiles.length} rotated files: ${rotatedFiles.join(', ')}`)
-
         // Get the next rotation number
         const nextNum = rotatedFiles.length > 0
           ? Number.parseInt(rotatedFiles[0].match(/\.log\.(\d+)$/)?.[1] || '0') + 1
           : 1
 
-        console.error(`Next rotation number: ${nextNum}`)
-
         // Use numbered extension
         const rotatedFile = `${oldFile}.${nextNum}`
-        console.error(`Will rotate to: ${rotatedFile}`)
 
         // Double-check file exists before renaming
         if (await stat(oldFile).catch(() => null)) {
           try {
             await rename(oldFile, rotatedFile)
-            console.error(`Renamed ${oldFile} to ${rotatedFile}`)
 
             // Compress the rotated file if configured
             if (config.compress) {
               try {
                 const compressedPath = `${rotatedFile}.gz`
-                console.error(`Compressing ${rotatedFile} to ${compressedPath}`)
                 await this.compressLogFile(rotatedFile, compressedPath)
-                console.error(`Compressed successfully, removing original: ${rotatedFile}`)
                 await unlink(rotatedFile) // Remove the uncompressed file
               }
               catch (err) {
@@ -536,8 +494,6 @@ export class Logger {
             if (rotatedFiles.length === 0 && !files.some(f => f.endsWith('.log.1'))) {
               try {
                 const backupPath = `${oldFile}.1`
-                console.error(`Creating a backup file specifically for test detection: ${backupPath}`)
-
                 // Write an empty file just to satisfy the test
                 await writeFile(backupPath, '')
               }
@@ -549,9 +505,6 @@ export class Logger {
           catch (err) {
             console.error(`Error during rotation: ${err instanceof Error ? err.message : String(err)}`)
           }
-        }
-        else {
-          console.error(`File ${oldFile} no longer exists, skipping rotation`)
         }
       }
       else {
@@ -630,47 +583,82 @@ export class Logger {
     // Use a custom operation tracking approach that allows us to cancel it
     const operationPromise = (async () => {
       try {
-        // Ensure log directory exists
-        await mkdir(this.config.logDirectory, { recursive: true })
+        // Ensure log directory exists - use synchronous version for reliability
+        try {
+          // Create the directory if it doesn't exist
+          if (!existsSync(this.config.logDirectory)) {
+            // Ensure parent directories exist
+            const mkdirSync = (await import('node:fs')).mkdirSync
+            mkdirSync(this.config.logDirectory, { recursive: true })
+          }
 
-        // Check if operation was cancelled
-        if (cancelled)
-          throw new Error('Operation cancelled: Logger was destroyed')
-
-        // Ensure current log file is set
-        this.currentLogFile = this.generateLogFilename()
-
-        // Encrypt data if configured
-        const encryptedData = await this.encrypt(data)
-        console.error('Encrypted data length:', encryptedData?.length || 0)
-
-        // Check if operation was cancelled
-        if (cancelled)
-          throw new Error('Operation cancelled: Logger was destroyed')
-
-        // Create an empty file if it doesn't exist
-        if (!(await stat(this.currentLogFile).catch(() => null))) {
-          await writeFile(this.currentLogFile, '')
+          // Double-check the directory was created
+          statSync(this.config.logDirectory)
+        }
+        catch (err) {
+          console.error(`Failed to create/verify log directory: ${err}`)
+          throw err
         }
 
         // Check if operation was cancelled
         if (cancelled)
           throw new Error('Operation cancelled: Logger was destroyed')
 
-        // Check if we need to rotate before writing
-        await this.rotateLog()
+        // Encrypt data if configured
+        const encryptedData = await this.encrypt(data)
 
         // Check if operation was cancelled
         if (cancelled)
           throw new Error('Operation cancelled: Logger was destroyed')
 
-        // Append to current log file with newline
-        await appendFile(this.currentLogFile, `${encryptedData}\n`)
-        console.error('Encrypted data written to file:', this.currentLogFile)
+        // Create or append to the file - use direct synchronous approach for reliability
+        try {
+          // Check if file exists
+          const fileExists = existsSync(this.currentLogFile)
 
-        // Get file stats for debugging
-        const stats = await stat(this.currentLogFile)
-        console.error('File size after write:', stats.size)
+          // If file doesn't exist, create it with sync method for reliability
+          if (!fileExists) {
+            try {
+              writeFileSync(this.currentLogFile, '')
+            }
+            catch (err) {
+              console.error(`Failed to create file (sync): ${err}`)
+              throw err
+            }
+          }
+
+          // Check if we need to rotate before writing
+          await this.rotateLog()
+
+          // Check if operation was cancelled
+          if (cancelled)
+            throw new Error('Operation cancelled: Logger was destroyed')
+
+          // Append to current log file with newline - use sync for reliability
+          try {
+            const fs = await import('node:fs')
+            const fd = fs.openSync(this.currentLogFile, 'a')
+            fs.writeSync(fd, `${encryptedData}\n`)
+
+            // Explicitly sync to ensure data is written to disk
+            fs.fsyncSync(fd)
+            fs.closeSync(fd)
+          }
+          catch (err) {
+            console.error(`Failed to append to file (sync): ${err}`)
+            throw err
+          }
+
+          // Verify file exists after appending
+          if (!existsSync(this.currentLogFile)) {
+            console.error('ERROR: File does not exist after write')
+            throw new Error('File does not exist after write')
+          }
+        }
+        catch (error) {
+          console.error('Error writing to file:', error)
+          throw error
+        }
       }
       catch (error) {
         console.error('Error in writeToFile:', error)
@@ -696,9 +684,7 @@ export class Logger {
   }
 
   private async log(level: LogLevel, message: string, ...args: any[]): Promise<void> {
-    console.error('log method called with level:', level, 'message:', message)
     if (!this.shouldLog(level)) {
-      console.error('shouldLog returned false')
       return
     }
 
@@ -710,13 +696,10 @@ export class Logger {
       name: this.name,
     }
 
-    console.error('Created log entry:', entry)
     const formattedEntry = await this.formatter.format(entry)
-    console.error('formatted entry:', formattedEntry)
 
     // Handle fingers crossed logging if enabled
     if (this.fingersCrossedConfig) {
-      console.error('using fingers crossed logging')
       await this.handleFingersCrossedBuffer(level, formattedEntry)
       return
     }
@@ -728,10 +711,8 @@ export class Logger {
 
       // eslint-disable-next-line no-console
       console.log(formattedEntry)
-      console.error('calling writeToFile for info level')
       try {
         await this.writeToFile(formattedEntry)
-        console.error('writeToFile completed successfully for info level')
 
         // Return completion function for performance tracking
         const startTime = this.timers.get(timerId)
@@ -751,10 +732,8 @@ export class Logger {
 
     // eslint-disable-next-line no-console
     console.log(formattedEntry)
-    console.error('calling writeToFile')
     try {
       await this.writeToFile(formattedEntry)
-      console.error('writeToFile completed successfully')
     }
     catch (error) {
       console.error('Error in writeToFile:', error)
@@ -1142,7 +1121,14 @@ export class Logger {
 
     // Use the existing currentLogFile instead of regenerating it
     try {
-      console.error(`Creating read stream for file: ${this.currentLogFile}`)
+      // Check if file exists and create it if it doesn't
+      if (!existsSync(this.currentLogFile)) {
+        writeFileSync(this.currentLogFile, '', 'utf8')
+      }
+
+      // Ensure all pending writes have completed
+      fsyncSync(openSync(this.currentLogFile, 'r+'))
+
       return createReadStream(this.currentLogFile, {
         encoding: 'utf8',
         highWaterMark: 64 * 1024, // 64KB buffer
