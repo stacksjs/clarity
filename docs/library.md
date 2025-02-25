@@ -209,6 +209,210 @@ catch (error) {
 }
 ```
 
+### Log Rotation
+
+Clarity provides flexible log rotation options to manage log files effectively:
+
+```ts
+import { Logger } from 'clarity'
+
+// Basic rotation with defaults
+const logger = new Logger('app', {
+  rotation: {
+    frequency: 'daily', // Rotate logs daily
+    maxSize: 10485760, // 10MB max file size
+    maxFiles: 5, // Keep 5 rotated files
+    compress: false, // Don't compress old logs
+  }
+})
+
+// Advanced rotation configuration
+const advancedLogger = new Logger('app', {
+  rotation: {
+    // Time-based rotation
+    frequency: 'daily', // Options: 'hourly', 'daily', 'weekly', 'monthly'
+    rotateHour: 0, // Hour to rotate (0-23)
+    rotateMinute: 0, // Minute to rotate (0-59)
+    rotateDayOfWeek: 0, // Day of week to rotate (0-6, 0 is Sunday)
+    rotateDayOfMonth: 1, // Day of month to rotate (1-31)
+
+    // Size-based rotation
+    maxSize: 10 * 1024 * 1024, // Rotate when file reaches 10MB
+    maxFiles: 5, // Keep 5 rotated files
+
+    // File handling
+    compress: true, // Compress rotated logs
+    encrypt: { // Encrypt rotated logs
+      algorithm: 'aes-256-gcm',
+      compress: true,
+    }
+  }
+})
+```
+
+#### Rotation Configuration
+
+1. **Time-Based Rotation**
+
+   ```ts
+   const logger = new Logger('app', {
+     rotation: {
+       // Rotate daily at midnight
+       frequency: 'daily',
+       rotateHour: 0,
+       rotateMinute: 0,
+
+       // Or weekly on Sunday
+       frequency: 'weekly',
+       rotateDayOfWeek: 0,
+
+       // Or monthly on the 1st
+       frequency: 'monthly',
+       rotateDayOfMonth: 1,
+     }
+   })
+   ```
+
+2. **Size-Based Rotation**
+
+   ```ts
+   const logger = new Logger('app', {
+     rotation: {
+       maxSize: 50 * 1024 * 1024, // 50MB
+       maxFiles: 10, // Keep 10 files
+     }
+   })
+   ```
+
+3. **Combined Rotation**
+
+   ```ts
+   const logger = new Logger('app', {
+     rotation: {
+       frequency: 'daily',
+       maxSize: 10 * 1024 * 1024, // Also rotate if file reaches 10MB
+       maxFiles: 5,
+       compress: true, // Compress old logs
+     }
+   })
+   ```
+
+#### File Management
+
+```ts
+// Configure log directory and naming
+const logger = new Logger('app', {
+  logDirectory: './logs', // Where to store logs
+  logDatePattern: 'YYYY-MM-DD', // Date pattern in filenames
+  maxLogSize: 10 * 1024 * 1024, // Maximum size per log file
+})
+```
+
+#### Best Practices
+
+1. **Storage Management**
+   - Set appropriate `maxFiles` to prevent disk space issues
+   - Enable compression for long-term storage
+   - Use time-based rotation for compliance requirements
+
+2. **Performance**
+   - Balance `maxSize` with write frequency
+   - Consider filesystem performance
+   - Monitor rotation overhead
+
+3. **Maintenance**
+   - Regular cleanup of old log files
+   - Verify rotation timing
+   - Monitor disk space usage
+
+### Encryption
+
+Clarity supports encryption of log files for sensitive data protection:
+
+```ts
+import { Logger } from 'clarity'
+
+// Create a logger with encryption enabled
+const logger = new Logger('secure-app', {
+  rotation: {
+    encrypt: {
+      algorithm: 'aes-256-gcm', // Supported: 'aes-256-cbc', 'aes-256-gcm'
+      compress: true, // Optional compression before encryption
+    }
+  }
+})
+
+// Logs are automatically encrypted
+await logger.info('Sensitive data', {
+  creditCard: '4111-1111-1111-1111',
+  ssn: '123-45-6789'
+})
+
+// Reading encrypted logs
+const entries = await logger.readLog('path/to/logfile')
+// Entries are automatically decrypted
+```
+
+#### Key Management
+
+Clarity supports automatic key rotation and management:
+
+```ts
+const logger = new Logger('secure-app', {
+  rotation: {
+    encrypt: {
+      algorithm: 'aes-256-gcm',
+    },
+    keyRotation: {
+      enabled: true,
+      maxKeys: 3, // Keep last 3 keys for decrypting old logs
+    }
+  }
+})
+
+// Manually manage keys if needed
+const { key, id } = logger.getCurrentKey()
+logger.setEncryptionKey('custom-key-id', Buffer.from('your-key'))
+```
+
+#### Re-encryption
+
+You can re-encrypt logs with new keys or algorithms:
+
+```ts
+await logger.reEncryptLogFile(
+  'old-logs.txt',
+  'new-logs.txt',
+  {
+    algorithm: 'aes-256-gcm',
+    compress: true
+  }
+)
+
+// Validate encryption
+const validation = await logger.validateEncryption('logs.txt')
+if (!validation.isValid) {
+  console.error('Encryption issues:', validation.errors)
+}
+```
+
+#### Best Practices
+
+1. **Key Security**
+   - Use environment variables for encryption keys
+   - Rotate keys regularly
+   - Back up keys securely
+
+2. **Algorithm Selection**
+   - Use `aes-256-gcm` for best security (authenticated encryption)
+   - Enable compression for large logs
+   - Consider performance impact on high-volume logging
+
+3. **Validation**
+   - Regularly validate encrypted logs
+   - Keep backup copies before re-encryption
+   - Monitor decryption errors
+
 ## TypeScript Integration
 
 ### Type-Safe Logging
