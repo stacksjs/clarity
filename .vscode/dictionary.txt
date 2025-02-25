@@ -17,6 +17,7 @@ deps
 destructurable
 dtsx
 entrypoints
+happydom
 heroicons
 iconify
 localtunnels
@@ -28,6 +29,7 @@ Postcardware
 prefetch
 preinstall
 quickfix
+Registrator
 shikijs
 socio
 Solana

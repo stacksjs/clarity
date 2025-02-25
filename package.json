@@ -61,8 +61,9 @@
     "typecheck": "bun --bun tsc --noEmit"
   },
   "devDependencies": {
+    "@happy-dom/global-registrator": "^17.1.8",
     "@stacksjs/docs": "^0.69.3",
-    "@stacksjs/eslint-config": "^3.15.1-beta.4",
+    "@stacksjs/eslint-config": "^4.2.1-beta.1",
     "@types/bun": "^1.2.3",
     "bumpp": "^10.0.3",
     "bun-plugin-dtsx": "^0.21.9",
