@@ -83,10 +83,29 @@ export class Logger {
       delete configOptions.timestamp // Remove from config to avoid type error
     }
 
+    // Merge with default config
     this.config = {
       ...defaultConfig,
       ...configOptions,
       timestamp: hasTimestamp || defaultConfig.timestamp,
+    }
+
+    // Ensure log directory exists
+    if (!this.config.logDirectory) {
+      this.config.logDirectory = defaultConfig.logDirectory
+    }
+
+    // Suppress config loading message if not in verbose mode
+    if (!this.config.verbose && !process.env.CLARITY_VERBOSE) {
+      const originalConsoleError = console.error
+      console.error = () => {}
+      try {
+        // Force config loading here to suppress messages
+        void loadConfig({ name: 'clarity', defaultConfig })
+      }
+      finally {
+        console.error = originalConsoleError
+      }
     }
 
     this.timers = new Map()
@@ -738,7 +757,7 @@ export class Logger {
     }
   }
 
-  private async log(level: LogLevel, message: string, ...args: any[]): Promise<void> {
+  async log(level: LogLevel, message: string, ...args: any[]): Promise<void> {
     if (!this.shouldLog(level)) {
       return
     }
