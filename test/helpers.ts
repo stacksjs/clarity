@@ -73,7 +73,6 @@ export class FSHelper {
       const fileContents = await readFile(file, 'utf-8')
       const lines = fileContents.split('\n').filter(Boolean)
 
-
       for (const line of lines) {
         try {
           let processedLine: string
@@ -264,4 +263,10 @@ export class PerformanceHelper {
     await fn()
     return performance.now() - start
   }
+}
+
+// Helper function for appendFile
+export async function appendFile(file: string, data: string): Promise<void> {
+  const { appendFile } = await import('node:fs/promises')
+  return appendFile(file, data)
 }

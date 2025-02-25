@@ -1,12 +1,10 @@
 import type { Logger } from '../src'
 import { afterAll, beforeAll, describe, expect, it } from 'bun:test'
-import { constants, createReadStream, existsSync, statSync, writeFileSync } from 'node:fs'
+import { constants, existsSync } from 'node:fs'
 import { access, chmod, mkdir, readdir, readFile, rm, stat, symlink, writeFile } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { pipeline } from 'node:stream/promises'
-import { createGzip } from 'node:zlib'
 import { Logger as ActualLogger } from '../src'
+import { appendFile } from './helpers'
 
 const TEST_LOG_DIR = join(process.cwd(), 'test-logs-integration')
 
@@ -2576,15 +2574,3 @@ describe('Logger Integration Tests', () => {
     })
   })
 })
-
-// Helper function for readdir since we need it multiple times
-// async function readdir(dir: string): Promise<string[]> {
-//   const { readdir } = await import('node:fs/promises')
-//   return readdir(dir)
-// }
-
-// Helper function for appendFile
-async function appendFile(file: string, data: string): Promise<void> {
-  const { appendFile } = await import('node:fs/promises')
-  return appendFile(file, data)
-}

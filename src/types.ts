@@ -123,7 +123,8 @@ export interface ClarityConfig {
 export type ClarityOptions = Partial<ClarityConfig>
 
 export interface Formatter {
-  format: (entry: LogEntry) => Promise<string>
+  format: (entry: LogEntry, forFile?: boolean) => Promise<string>
+  formatForFile?: (entry: LogEntry) => Promise<string>
 }
 
 export interface LoggerOptions {

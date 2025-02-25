@@ -1,3 +1,4 @@
+import process from 'node:process'
 import { PrettyFormatter } from './src/formatters/pretty'
 import { Logger } from './src/logger'
 
@@ -85,3 +86,5 @@ async function testPrettyFormatter() {
 // Create a logger for the catch block to avoid undefined reference
 const errorLogger = new Logger('error-handler')
 testPrettyFormatter().catch(err => errorLogger.error('Test failed:', err))
+
+// process.exit(0)

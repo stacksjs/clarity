@@ -24,6 +24,7 @@ import { pipeline } from 'node:stream/promises'
 import { createGunzip, createGzip } from 'node:zlib'
 import { config as defaultConfig } from './config'
 import { JsonFormatter } from './formatters/json'
+import { PrettyFormatter } from './formatters/pretty'
 import { TextFormatter } from './formatters/text'
 import { chunk, isBrowserProcess } from './utils'
 
@@ -629,8 +630,38 @@ export class Logger {
         if (cancelled)
           throw new Error('Operation cancelled: Logger was destroyed')
 
+        // Format data for file output
+        let formattedData = data
+        try {
+          // Parse the data back to a LogEntry
+          const entry = JSON.parse(data)
+          // Restore the Date object
+          entry.timestamp = new Date(entry.timestamp)
+          // Format specifically for file output
+          formattedData = await this.formatter.format(entry, true)
+        }
+        catch {
+          // If parsing fails, use the data as-is but strip ANSI codes
+          let result = ''
+          let inEscSeq = false
+          for (let i = 0; i < data.length; i++) {
+            if (data[i] === '\x1B' && data[i + 1] === '[') {
+              inEscSeq = true
+              continue
+            }
+            if (inEscSeq) {
+              if (data[i] === 'm') {
+                inEscSeq = false
+              }
+              continue
+            }
+            result += data[i]
+          }
+          formattedData = result
+        }
+
         // Encrypt data if configured
-        const encryptedData = await this.encrypt(data)
+        const encryptedData = await this.encrypt(formattedData)
 
         // Check if operation was cancelled
         if (cancelled)
@@ -720,6 +751,7 @@ export class Logger {
       name: this.name,
     }
 
+    // Format for console output
     const formattedEntry = await this.formatter.format(entry)
 
     // Handle fingers crossed logging if enabled
@@ -736,7 +768,8 @@ export class Logger {
       // eslint-disable-next-line no-console
       console.log(formattedEntry)
       try {
-        await this.writeToFile(formattedEntry)
+        // Write to file using JSON format to preserve the entry structure
+        await this.writeToFile(JSON.stringify(entry))
 
         // Return completion function for performance tracking
         const startTime = this.timers.get(timerId)
@@ -757,7 +790,8 @@ export class Logger {
     // eslint-disable-next-line no-console
     console.log(formattedEntry)
     try {
-      await this.writeToFile(formattedEntry)
+      // Write to file using JSON format to preserve the entry structure
+      await this.writeToFile(JSON.stringify(entry))
     }
     catch (error) {
       console.error('Error in writeToFile:', error)

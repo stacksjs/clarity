@@ -52,7 +52,10 @@ const LEVEL_STYLES: Record<string, LevelStyle> = {
   error: { color: COLORS.brightRed, label: 'ERROR', box: true },
 }
 
-// Helper to strip ANSI escape codes for length calculations
+// Default terminal width for right-aligning timestamps
+const DEFAULT_TERMINAL_WIDTH = 120
+
+// Helper to strip ANSI escape codes for length calculations and file output
 function stripAnsi(str: string): string {
   let result = ''
   let inEscSeq = false
@@ -77,7 +80,7 @@ function stripAnsi(str: string): string {
 }
 
 // Helper to create a box around text
-function createBox(text: string, color: string): string {
+function createBox(text: string, color: string, forFile: boolean = false): string {
   const lines = text.split('\n')
   const visibleLines = lines.map(line => stripAnsi(line))
 
@@ -85,45 +88,72 @@ function createBox(text: string, color: string): string {
   const maxContentWidth = Math.max(...visibleLines.map(line => line.length))
   const boxWidth = maxContentWidth + 4 // 2 chars padding on each side
 
-  // Create the borders - using double-lined box characters
-  const horizontalBorder = '═'.repeat(boxWidth - 2)
-  const topBorder = `${color}╔${horizontalBorder}╗${COLORS.reset}`
-  const bottomBorder = `${color}╚${horizontalBorder}╝${COLORS.reset}`
+  if (forFile) {
+    // Simple box for file output without colors
+    const horizontalBorder = '='.repeat(boxWidth - 2)
+    const topBorder = `+${horizontalBorder}+`
+    const bottomBorder = `+${horizontalBorder}+`
 
-  // Format each line with vertical borders
-  const formattedLines = lines.map((line) => {
-    const visibleLength = stripAnsi(line).length
-    const padding = ' '.repeat(maxContentWidth - visibleLength)
-    return `${color}║${COLORS.reset} ${line}${padding} ${color}║${COLORS.reset}`
-  })
+    // Format each line with vertical borders
+    const formattedLines = lines.map((line) => {
+      const visibleLength = stripAnsi(line).length
+      const padding = ' '.repeat(maxContentWidth - visibleLength)
+      return `| ${stripAnsi(line)}${padding} |`
+    })
 
-  // Return the complete box
-  return [topBorder, ...formattedLines, bottomBorder].join('\n')
+    // Return the complete box
+    return [topBorder, ...formattedLines, bottomBorder].join('\n')
+  }
+  else {
+    // Fancy box for console output with colors
+    const horizontalBorder = '═'.repeat(boxWidth - 2)
+    const topBorder = `${color}╔${horizontalBorder}╗${COLORS.reset}`
+    const bottomBorder = `${color}╚${horizontalBorder}╝${COLORS.reset}`
+
+    // Format each line with vertical borders
+    const formattedLines = lines.map((line) => {
+      const visibleLength = stripAnsi(line).length
+      const padding = ' '.repeat(maxContentWidth - visibleLength)
+      return `${color}║${COLORS.reset} ${line}${padding} ${color}║${COLORS.reset}`
+    })
+
+    // Return the complete box
+    return [topBorder, ...formattedLines, bottomBorder].join('\n')
+  }
 }
 
 export class PrettyFormatter implements Formatter {
   private config: ClarityConfig
+  private terminalWidth: number
 
   constructor(config: ClarityConfig) {
     this.config = config
+    // Use sensible default if terminalWidth not specified in config
+    this.terminalWidth = DEFAULT_TERMINAL_WIDTH
   }
 
-  async format(entry: LogEntry): Promise<string> {
+  async format(entry: LogEntry, forFile: boolean = false): Promise<string> {
     const { timestamp, level, message, args = [], name } = entry
     const formattedMessage = args.length ? format(message, ...args) : message
 
     const style = LEVEL_STYLES[level]
     const icon = ICONS[level]
 
-    // Format timestamp
+    // Format timestamp first for files
     const timestampStr = timestamp.toISOString()
-    const formattedTimestamp = `${COLORS.dim}${timestampStr}${COLORS.reset}`
+    const formattedTimestamp = forFile
+      ? timestampStr
+      : `${COLORS.dim}${timestampStr}${COLORS.reset}`
 
-    // Format logger name
-    const formattedName = `${COLORS.brightCyan}[${name}]${COLORS.reset}`
+    // Format logger name - with or without colors
+    const formattedName = forFile
+      ? `[${name}]`
+      : `${COLORS.brightCyan}[${name}]${COLORS.reset}`
 
-    // Format level with icon
-    const levelOutput = `${style.color}${icon} ${COLORS.reset}`
+    // Format level with icon - with or without colors
+    const levelOutput = forFile
+      ? `${icon} `
+      : `${style.color}${icon} ${COLORS.reset}`
 
     // Check if this is a stack trace from an error
     let formattedContent = formattedMessage
@@ -145,10 +175,14 @@ export class PrettyFormatter implements Formatter {
             if (funcLocationParts.length > 1) {
               const fnName = funcLocationParts[0]
               const location = funcLocationParts[1].replace(')', '')
-              return `  ${COLORS.dim}at ${COLORS.cyan}${fnName}${COLORS.dim} (${location})${COLORS.reset}`
+              return forFile
+                ? `  at ${fnName} (${location})`
+                : `  ${COLORS.dim}at ${COLORS.cyan}${fnName}${COLORS.dim} (${location})${COLORS.reset}`
             }
           }
-          return `  ${COLORS.dim}${line.trim()}${COLORS.reset}`
+          return forFile
+            ? `  ${line.trim()}`
+            : `  ${COLORS.dim}${line.trim()}${COLORS.reset}`
         }
         return `  ${line}`
       })
@@ -156,22 +190,72 @@ export class PrettyFormatter implements Formatter {
       formattedContent = formattedLines.join('\n')
     }
 
-    // Apply box formatting for warnings and errors if specified
-    if (style.box) {
-      const levelLabel = `${style.color}${style.label}${COLORS.reset}`
+    // For file output, construct message with timestamp at start
+    if (forFile) {
+      // For warnings and errors with boxes
+      if (style.box) {
+        const levelLabel = style.label
+        const boxedContent = createBox(formattedContent, level === 'error' ? COLORS.red : COLORS.yellow, forFile)
+        const boxLines = boxedContent.split('\n')
 
-      // For errors, format in a red box (same line)
-      if (level === 'error') {
-        return `${formattedTimestamp} ${formattedName} ${levelLabel}\n${createBox(formattedContent, COLORS.red)}`
+        // Add timestamp to first line and proper indentation to box lines
+        return [
+          `${timestampStr} ${formattedName} ${levelLabel}`,
+          ...boxLines.map(line => `${timestampStr} ${' '.repeat(formattedName.length + levelLabel.length + 2)} ${line}`),
+        ].join('\n')
       }
 
-      // For warnings, format in a yellow box (same line)
-      if (level === 'warning') {
-        return `${formattedTimestamp} ${formattedName} ${levelLabel}\n${createBox(formattedContent, COLORS.yellow)}`
-      }
+      // For regular messages
+      return `${timestampStr} ${formattedName} ${levelOutput}${formattedContent}`
     }
 
-    // Default formatting for other levels
-    return `${formattedTimestamp} ${formattedName} ${levelOutput} ${formattedContent}`
+    // For console output, construct the message with right-aligned timestamp
+    let logContent = ''
+
+    if (style.box) {
+      const levelLabel = `${style.color}${style.label}${COLORS.reset}`
+      if (level === 'error') {
+        logContent = `${formattedName} ${levelLabel}\n${createBox(formattedContent, COLORS.red, forFile)}`
+      }
+      else if (level === 'warning') {
+        logContent = `${formattedName} ${levelLabel}\n${createBox(formattedContent, COLORS.yellow, forFile)}`
+      }
+    }
+    else {
+      logContent = `${formattedName} ${levelOutput}${formattedContent}`
+    }
+
+    // For console output, right-align timestamp
+    if (logContent.includes('\n')) {
+      const lines = logContent.split('\n')
+
+      // Calculate right padding for timestamp on first line
+      const firstLineVisibleLength = stripAnsi(lines[0]).length
+      const timestampVisibleLength = stripAnsi(formattedTimestamp).length
+
+      // Calculate padding to push timestamp to the right
+      const padding = Math.max(0, this.terminalWidth - firstLineVisibleLength - timestampVisibleLength - 1)
+
+      // Add right-aligned timestamp to first line
+      lines[0] = `${lines[0]}${' '.repeat(padding)}${formattedTimestamp}`
+
+      return lines.join('\n')
+    }
+    else {
+      // Calculate right padding for timestamp
+      const logContentVisibleLength = stripAnsi(logContent).length
+      const timestampVisibleLength = stripAnsi(formattedTimestamp).length
+
+      // Calculate padding to push timestamp to the right
+      const padding = Math.max(0, this.terminalWidth - logContentVisibleLength - timestampVisibleLength - 1)
+
+      // Add right-aligned timestamp
+      return `${logContent}${' '.repeat(padding)}${formattedTimestamp}`
+    }
+  }
+
+  // New method to format for file output (without ANSI colors)
+  async formatForFile(entry: LogEntry): Promise<string> {
+    return this.format(entry, true)
   }
 }
