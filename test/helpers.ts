@@ -66,17 +66,13 @@ export class FSHelper {
   }
 
   async getLogContents(): Promise<string> {
-    console.error('getLogContents called')
     const files = await this.getLogFiles()
-    console.error('Found log files:', files)
     let contents = ''
 
     for (const file of files) {
-      console.error('Reading file:', file)
       const fileContents = await readFile(file, 'utf-8')
-      console.error('Raw file contents length:', fileContents.length)
       const lines = fileContents.split('\n').filter(Boolean)
-      console.error('Number of lines:', lines.length)
+
 
       for (const line of lines) {
         try {
