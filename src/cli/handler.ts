@@ -76,16 +76,26 @@ export async function handleLog(logger: Logger, message: string, options: LogOpt
     // Ensure all writes are flushed to disk
     await targetLogger.flushPendingWrites()
 
-    // Verify the log file exists and has content
+    // Get the current log file path
     const logFile = targetLogger.getCurrentLogFilePath()
     console.error('Debug: Verifying log file:', logFile)
 
-    const { stat } = await import('node:fs/promises')
-    const stats = await stat(logFile)
-    console.error('Debug: Log file stats:', { size: stats.size, path: logFile })
+    // Wait a short time to ensure file system has caught up
+    await new Promise(resolve => setTimeout(resolve, 100))
 
-    if (stats.size === 0) {
-      throw new Error('Log file exists but is empty after write')
+    // Verify the log file exists and has content
+    const { stat } = await import('node:fs/promises')
+    try {
+      const stats = await stat(logFile)
+      console.error('Debug: Log file stats:', { size: stats.size, path: logFile })
+
+      if (stats.size === 0) {
+        throw new Error('Log file exists but is empty after write')
+      }
+    }
+    catch (err) {
+      console.error('Debug: Error verifying log file:', err)
+      throw new Error(`Failed to verify log file at ${logFile}: ${err}`)
     }
 
     console.error('Debug: Log operation completed successfully')

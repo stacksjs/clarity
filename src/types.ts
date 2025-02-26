@@ -1,7 +1,4 @@
-import type * as colors from './colors'
-
 export type LogLevel = 'debug' | 'info' | 'success' | 'warning' | 'error'
-export type LogColors = keyof typeof colors
 
 export type RotationFrequency = 'hourly' | 'daily' | 'weekly' | 'monthly' | 'none'
 

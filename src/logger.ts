@@ -1,43 +1,24 @@
-import type { CipherGCM } from 'node:crypto'
+import type { Buffer } from 'node:buffer'
+import type { BinaryLike, CipherGCM } from 'node:crypto'
 import type { Readable, Writable } from 'node:stream'
+
 import type { ClarityConfig, EncryptionConfig, Formatter, LogEntry, LoggerOptions, LogLevel } from './types'
-import { Buffer } from 'node:buffer'
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'node:crypto'
-import {
-  closeSync,
-  createReadStream,
-  createWriteStream,
-  existsSync,
-  fsyncSync,
-  openSync,
-  readdirSync,
-  statSync,
-  watch,
-  writeFileSync,
-  writeSync,
-} from 'node:fs'
-import { readdir, readFile, rename, stat, unlink, writeFile } from 'node:fs/promises'
+import { closeSync, createReadStream, createWriteStream, existsSync, fsyncSync, openSync, readdirSync, statSync, watch, writeFileSync } from 'node:fs'
+import { appendFile, mkdir, readdir, readFile, rename, stat, unlink, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import process from 'node:process'
 import { PassThrough } from 'node:stream'
 import { pipeline } from 'node:stream/promises'
 import { createGunzip, createGzip } from 'node:zlib'
+
 import { config as defaultConfig } from './config'
 import { JsonFormatter } from './formatters/json'
 import { TextFormatter } from './formatters/text'
 import { chunk, isBrowserProcess } from './utils'
 
-interface EncryptionOptions {
-  algorithm?: 'aes-256-cbc' | 'aes-256-gcm' | 'chacha20-poly1305'
-  keyId?: string
-  compress?: boolean
-}
-
-// interface KeyRotationConfig {
-//   enabled: boolean
-//   interval: number // in days
-//   maxKeys: number
-// }
+// Define missing types
+type BunTimer = ReturnType<typeof setTimeout>
 
 interface FingersCrossedConfig {
   activationLevel: LogLevel
@@ -53,66 +34,42 @@ const defaultFingersCrossedConfig: FingersCrossedConfig = {
   stopBuffering: false,
 }
 
-export type BunTimer = ReturnType<typeof setTimeout>
-
-interface WatchOptions {
-  level?: LogLevel
-  name?: string
-  format?: 'json' | 'text'
-  timestamp?: boolean
-  colors?: boolean
-}
-
-interface ExportOptions {
-  level?: LogLevel
-  name?: string
-  format?: 'json' | 'text'
-  start?: Date
-  end?: Date
-}
-
-interface TailOptions {
-  level?: LogLevel
-  name?: string
-  colors?: boolean
-  lines?: number
-}
-
-interface SearchOptions {
-  level?: LogLevel
-  name?: string
-  pattern: string
-  caseSensitive?: boolean
-  context?: number
-  start?: Date
-  end?: Date
-}
-
-interface ClearOptions {
-  level?: LogLevel
-  name?: string
-  before?: Date
+// Update LoggerOptions to include formatter
+interface ExtendedLoggerOptions extends LoggerOptions {
+  formatter?: Formatter
+  fingersCrossed?: Partial<FingersCrossedConfig>
 }
 
 export class Logger {
   private name: string
-  readonly config: ClarityConfig
-  private timers: Map<string, number>
-  private subLoggers: Map<string, Logger>
-  private formatter: Formatter
+  private fileLocks: Map<string, number> = new Map()
+  private currentKeyId: string = ''
+  private keys: Map<string, BinaryLike> = new Map()
+  private readonly config: ClarityConfig
+  private readonly options: ExtendedLoggerOptions
+  private readonly formatter: Formatter
+  private readonly timers: Set<BunTimer> = new Set()
+  private readonly subLoggers: Set<Logger> = new Set()
+  private readonly fingersCrossedBuffer: string[] = []
+  private fingersCrossedConfig: FingersCrossedConfig
+  private fingersCrossedActive: boolean = false
   private currentLogFile: string
   private rotationTimeout?: BunTimer
   private keyRotationTimeout?: BunTimer
   private encryptionKeys: Map<string, { key: Buffer, createdAt: Date }>
   private logBuffer: LogEntry[] = []
   private isActivated: boolean = false
-  private fingersCrossedConfig?: FingersCrossedConfig
-  private options: LoggerOptions
   private pendingOperations: Promise<any>[] = [] // Track pending operations
 
-  constructor(name: string, options: LoggerOptions = {}) {
+  constructor(name: string, options: Partial<ExtendedLoggerOptions> = {}) {
     this.name = name
-    this.options = options
+    this.config = { ...defaultConfig }
+    this.options = this.normalizeOptions(options)
+    this.formatter = this.options.formatter || new JsonFormatter()
+    this.fingersCrossedConfig = {
+      ...defaultFingersCrossedConfig,
+      ...(options.fingersCrossed || {}),
+    }
 
     // Handle config options
     const configOptions = { ...options }
@@ -123,9 +80,9 @@ export class Logger {
 
     // Merge with default config
     this.config = {
-      ...defaultConfig,
+      ...this.config,
       ...configOptions,
-      timestamp: hasTimestamp || defaultConfig.timestamp,
+      timestamp: hasTimestamp || this.config.timestamp,
     }
 
     // Ensure log directory exists
@@ -140,11 +97,6 @@ export class Logger {
       config: this.config,
     })
 
-    this.timers = new Map()
-    this.subLoggers = new Map()
-    this.formatter = this.config.format === 'json'
-      ? new JsonFormatter()
-      : new TextFormatter(this.config)
     this.currentLogFile = this.generateLogFilename()
 
     console.error('Debug: Current log file:', this.currentLogFile)
@@ -158,145 +110,190 @@ export class Logger {
         this.setupKeyRotation()
       }
     }
+  }
 
-    if (options.fingersCrossed) {
-      this.fingersCrossedConfig = {
-        ...defaultFingersCrossedConfig,
-        ...(typeof options.fingersCrossed === 'object' ? options.fingersCrossed : {}),
+  private normalizeOptions(_options: Partial<ExtendedLoggerOptions>): ExtendedLoggerOptions {
+    // Implementation of normalizeOptions method
+    return {
+      format: 'json',
+      fingersCrossed: {},
+    } as ExtendedLoggerOptions
+  }
+
+  private async writeToFile(data: string): Promise<void> {
+    if (isBrowserProcess())
+      return
+
+    // Create a flag to track if this operation has been cancelled
+    const cancelled = false
+
+    // Use a custom operation tracking approach that allows us to cancel it
+    const operationPromise = (async () => {
+      let fd: number | undefined
+      try {
+        // Ensure log directory exists
+        try {
+          console.error('Debug: [writeToFile] Checking log directory:', this.config.logDirectory)
+          const dirExists = existsSync(this.config.logDirectory)
+          console.error('Debug: [writeToFile] Log directory exists?', dirExists)
+
+          if (!dirExists) {
+            console.error('Debug: [writeToFile] Creating log directory:', this.config.logDirectory)
+            await mkdir(this.config.logDirectory, { recursive: true, mode: 0o755 })
+            console.error('Debug: [writeToFile] Created log directory')
+          }
+          console.error('Debug: [writeToFile] Log directory exists:', this.config.logDirectory)
+
+          // Double check directory was created
+          const dirStats = await stat(this.config.logDirectory)
+          console.error('Debug: [writeToFile] Log directory stats:', {
+            exists: true,
+            mode: dirStats.mode.toString(8),
+            uid: dirStats.uid,
+            gid: dirStats.gid,
+          })
+        }
+        catch (err) {
+          console.error('Debug: [writeToFile] Failed to create log directory:', err)
+          throw err
+        }
+
+        // Check if operation was cancelled
+        if (cancelled)
+          throw new Error('Operation cancelled: Logger was destroyed')
+
+        // Format data for file output
+        let formattedData = data
+        try {
+          // Parse the data back to a LogEntry
+          const entry = JSON.parse(data)
+          // Restore the Date object
+          entry.timestamp = new Date(entry.timestamp)
+          // Format specifically for file output
+          formattedData = await this.formatter.format(entry, true)
+          console.error('Debug: [writeToFile] Formatted log entry:', formattedData)
+        }
+        catch (err) {
+          console.error('Debug: [writeToFile] Error formatting data:', err)
+          // If parsing fails, use the data as-is but strip ANSI codes
+          let result = ''
+          let inEscSeq = false
+          for (let i = 0; i < data.length; i++) {
+            if (data[i] === '\x1B' && data[i + 1] === '[') {
+              inEscSeq = true
+              continue
+            }
+            if (inEscSeq) {
+              if (data[i] === 'm') {
+                inEscSeq = false
+              }
+              continue
+            }
+            result += data[i]
+          }
+          formattedData = result
+        }
+
+        // Encrypt data if configured
+        const encryptedData = await this.encrypt(formattedData)
+        console.error('Debug: [writeToFile] Writing to file:', this.currentLogFile)
+
+        // Check if operation was cancelled
+        if (cancelled)
+          throw new Error('Operation cancelled: Logger was destroyed')
+
+        // Write to file with proper synchronization
+        try {
+          // Create file if it doesn't exist with proper permissions
+          const fileExists = existsSync(this.currentLogFile)
+          console.error('Debug: [writeToFile] File exists?', fileExists)
+
+          if (!fileExists) {
+            console.error('Debug: [writeToFile] Creating new log file:', this.currentLogFile)
+            writeFileSync(this.currentLogFile, '', { mode: 0o644 })
+            console.error('Debug: [writeToFile] Created new log file')
+
+            // Verify file was created
+            const fileStats = await stat(this.currentLogFile)
+            console.error('Debug: [writeToFile] New file stats:', {
+              exists: true,
+              mode: fileStats.mode.toString(8),
+              uid: fileStats.uid,
+              gid: fileStats.gid,
+            })
+          }
+
+          // Open file for appending with exclusive access
+          console.error('Debug: [writeToFile] Opening file for writing')
+          fd = openSync(this.currentLogFile, 'a', 0o644)
+
+          // Append the log entry with a newline
+          console.error('Debug: [writeToFile] Appending to file:', this.currentLogFile)
+          writeFileSync(fd, `${encryptedData}\n`, { flag: 'a' })
+          // Force sync to ensure data is written to disk
+          fsyncSync(fd)
+          console.error('Debug: [writeToFile] Successfully wrote to file')
+
+          // Verify file exists and has content
+          const stats = await stat(this.currentLogFile)
+          console.error('Debug: [writeToFile] Final file stats:', {
+            exists: true,
+            size: stats.size,
+            mode: stats.mode.toString(8),
+            uid: stats.uid,
+            gid: stats.gid,
+            path: this.currentLogFile,
+          })
+
+          if (stats.size === 0) {
+            throw new Error('File exists but is empty after write')
+          }
+
+          // List directory contents to verify
+          const dirContents = await readdir(this.config.logDirectory)
+          console.error('Debug: [writeToFile] Directory contents after write:', dirContents)
+        }
+        catch (err) {
+          console.error('Debug: [writeToFile] Error writing to file:', err)
+          throw err
+        }
+        finally {
+          // Always close the file descriptor if it was opened
+          if (fd !== undefined) {
+            try {
+              closeSync(fd)
+              console.error('Debug: [writeToFile] Closed file descriptor')
+            }
+            catch (err) {
+              console.error('Debug: [writeToFile] Error closing file descriptor:', err)
+            }
+          }
+        }
       }
-    }
-  }
-
-  private setupKeyRotation(): void {
-    if (typeof this.config.rotation === 'boolean')
-      return
-    const keyRotation = this.config.rotation.keyRotation
-    if (!keyRotation?.enabled || !keyRotation.interval || !keyRotation.maxKeys)
-      return
-
-    // Generate initial key
-    const initialKeyId = this.generateKeyId()
-    const timestamp = typeof this.config.timestamp === 'string' || typeof this.config.timestamp === 'number'
-      ? new Date(this.config.timestamp)
-      : new Date()
-
-    this.encryptionKeys.set(initialKeyId, {
-      key: this.generateKey(),
-      createdAt: timestamp,
-    })
-
-    // Set up key rotation interval
-    this.keyRotationTimeout = setInterval(() => {
-      this.rotateKeys().catch((error) => {
-        console.error('Error rotating keys:', error)
-      })
-    }, keyRotation.interval * 1000)
-  }
-
-  private async rotateKeys(): Promise<void> {
-    if (typeof this.config.rotation === 'boolean')
-      return
-    const keyRotation = this.config.rotation.keyRotation
-    if (!keyRotation?.enabled || !keyRotation.maxKeys)
-      return
-
-    // Generate new key
-    const newKeyId = this.generateKeyId()
-    this.encryptionKeys.set(newKeyId, {
-      key: this.generateKey(),
-      createdAt: new Date(),
-    })
-
-    // Remove old keys if we exceed maxKeys
-    const sortedKeys = Array.from(this.encryptionKeys.entries())
-      .sort(([, a], [, b]) => b.createdAt.getTime() - a.createdAt.getTime())
-
-    if (sortedKeys.length > keyRotation.maxKeys) {
-      for (const [keyId] of sortedKeys.slice(keyRotation.maxKeys))
-        this.encryptionKeys.delete(keyId)
-    }
-  }
-
-  private generateKeyId(): string {
-    return randomBytes(16).toString('hex')
-  }
-
-  private generateKey(): Buffer {
-    return randomBytes(32)
-  }
-
-  getCurrentKey(): { key: Buffer, id: string } {
-    if (this.encryptionKeys.size === 0) {
-      const id = this.generateKeyId()
-      const key = this.generateKey()
-      this.encryptionKeys.set(id, { key, createdAt: new Date() })
-      return { key, id }
-    }
-
-    // Get the newest key
-    const [id, { key }] = Array.from(this.encryptionKeys.entries())
-      .sort(([, a], [, b]) => b.createdAt.getTime() - a.createdAt.getTime())[0]
-
-    return { key, id }
-  }
-
-  setEncryptionKey(id: string, key: Buffer): void {
-    this.encryptionKeys.set(id, { key, createdAt: new Date() })
-  }
-
-  private getEncryptionOptions(): EncryptionConfig {
-    if (!this.config.rotation || typeof this.config.rotation === 'boolean'
-      || !this.config.rotation.encrypt) {
-      return {}
-    }
-
-    const defaultOptions: EncryptionConfig = {
-      algorithm: 'aes-256-cbc',
-      compress: false,
-    }
-
-    if (typeof this.config.rotation.encrypt === 'object') {
-      const encryptConfig: EncryptionConfig = this.config.rotation.encrypt
-      return {
-        ...defaultOptions,
-        ...encryptConfig,
+      catch (err) {
+        console.error('Debug: [writeToFile] Error in writeToFile:', err)
+        throw err
       }
+    })()
+
+    // Track this operation
+    this.pendingOperations.push(operationPromise)
+    const index = this.pendingOperations.length - 1
+
+    try {
+      await operationPromise
     }
-
-    return defaultOptions
+    catch (err) {
+      console.error('Debug: [writeToFile] Error in operation:', err)
+      throw err
+    }
+    finally {
+      // Remove the operation from tracking
+      this.pendingOperations.splice(index, 1)
+    }
   }
 
-  private async compressData(data: Buffer): Promise<Buffer> {
-    return new Promise<Buffer>((resolve, reject) => {
-      const chunks: Buffer[] = []
-      const gzip = createGzip()
-
-      gzip.on('data', (chunk: Buffer) => chunks.push(chunk))
-      gzip.on('end', () => {
-        const concatenated = Buffer.concat(chunks)
-        // Create a new Buffer from the concatenated one to ensure correct backing type
-        resolve(Buffer.from(concatenated))
-      })
-      gzip.on('error', reject)
-
-      gzip.end(data)
-    })
-  }
-
-  private async decompressData(data: Buffer): Promise<Buffer> {
-    return new Promise<Buffer>((resolve, reject) => {
-      const chunks: Uint8Array[] = []
-      const gunzip = createGunzip()
-
-      gunzip.on('data', (chunk: Uint8Array) => chunks.push(chunk))
-      gunzip.on('end', () => resolve(Buffer.from(Buffer.concat(chunks))))
-      gunzip.on('error', reject)
-
-      gunzip.end(data)
-    })
-  }
-
-  private generateLogFilename(): string {
+  generateLogFilename(): string {
     // Special case for tests to maintain consistent file path
     if (this.name.includes('stream-throughput')
       || this.name.includes('decompress-perf-test')
@@ -329,189 +326,148 @@ export class Logger {
     )
   }
 
-  private getLevelValue(level: LogLevel): number {
-    const levels: Record<LogLevel, number> = {
-      debug: 0,
-      info: 1,
-      success: 2,
-      warning: 3,
-      error: 4,
-    }
-    return levels[level]
-  }
-
-  private shouldActivateFingersCrossed(level: LogLevel): boolean {
-    if (!this.fingersCrossedConfig)
-      return false
-
-    return this.getLevelValue(level) >= this.getLevelValue(this.fingersCrossedConfig.activationLevel)
-  }
-
-  private async handleFingersCrossedBuffer(level: LogLevel, formattedEntry: string): Promise<void> {
-    if (!this.fingersCrossedConfig)
+  setupRotation(): void {
+    if (isBrowserProcess())
+      return
+    if (typeof this.config.rotation === 'boolean')
       return
 
-    if (this.shouldActivateFingersCrossed(level) && !this.isActivated) {
-      this.isActivated = true
+    const config = this.config.rotation
+    let interval: number
 
-      // Write all buffered entries
-      for (const entry of this.logBuffer) {
-        const formattedBufferedEntry = await this.formatter.format(entry)
-        await this.writeToFile(formattedBufferedEntry)
-        // eslint-disable-next-line no-console
-        console.log(formattedBufferedEntry)
-      }
-
-      // Clear buffer if stopBuffering is true
-      if (this.fingersCrossedConfig.stopBuffering)
-        this.logBuffer = []
+    switch (config.frequency) {
+      case 'daily':
+        interval = 24 * 60 * 60 * 1000
+        break
+      case 'weekly':
+        interval = 7 * 24 * 60 * 60 * 1000
+        break
+      case 'monthly':
+        interval = 30 * 24 * 60 * 60 * 1000
+        break
+      default:
+        return
     }
 
-    if (this.isActivated) {
-      // Direct write when activated
-      await this.writeToFile(formattedEntry)
-      // eslint-disable-next-line no-console
-      console.log(formattedEntry)
-    }
-    else {
-      // Buffer the entry
-      if (this.logBuffer.length >= this.fingersCrossedConfig.bufferSize)
-        this.logBuffer.shift() // Remove oldest entry
+    this.rotationTimeout = setInterval(() => {
+      void this.rotateLog()
+    }, interval)
+  }
 
-      const entry: LogEntry = {
-        timestamp: new Date(),
-        level,
-        message: formattedEntry,
-        name: this.name,
-      }
-      this.logBuffer.push(entry)
+  setupKeyRotation(): void {
+    if (typeof this.config.rotation === 'boolean')
+      return
+    const keyRotation = this.config.rotation.keyRotation
+    if (!keyRotation?.enabled || !keyRotation.interval || !keyRotation.maxKeys)
+      return
+
+    // Generate initial key
+    const initialKeyId = this.generateKeyId()
+    const timestamp = typeof this.config.timestamp === 'string' || typeof this.config.timestamp === 'number'
+      ? new Date(this.config.timestamp)
+      : new Date()
+
+    this.encryptionKeys.set(initialKeyId, {
+      key: this.generateKey(),
+      createdAt: timestamp,
+    })
+
+    // Set up key rotation interval
+    this.keyRotationTimeout = setInterval(() => {
+      this.rotateKeys().catch((error) => {
+        console.error('Error rotating keys:', error)
+      })
+    }, keyRotation.interval * 1000)
+  }
+
+  async rotateKeys(): Promise<void> {
+    if (typeof this.config.rotation === 'boolean')
+      return
+    const keyRotation = this.config.rotation.keyRotation
+    if (!keyRotation?.enabled || !keyRotation.maxKeys)
+      return
+
+    // Generate new key
+    const newKeyId = this.generateKeyId()
+    this.encryptionKeys.set(newKeyId, {
+      key: this.generateKey(),
+      createdAt: new Date(),
+    })
+
+    // Remove old keys if we exceed maxKeys
+    const sortedKeys = Array.from(this.encryptionKeys.entries())
+      .sort(([, a], [, b]) => b.createdAt.getTime() - a.createdAt.getTime())
+
+    if (sortedKeys.length > keyRotation.maxKeys) {
+      for (const [keyId] of sortedKeys.slice(keyRotation.maxKeys))
+        this.encryptionKeys.delete(keyId)
     }
   }
 
-  private getEncryptionKey(): Buffer {
-    const key = createHash('sha256')
-      .update(String(process.env.LOG_ENCRYPTION_KEY || 'default-key'))
-      .digest()
-    return key
+  private generateKeyId(): string {
+    return randomBytes(16).toString('hex')
   }
 
-  private async encrypt(data: string): Promise<string> {
-    const encryptConfig = this.getEncryptionOptions()
-    if (!Object.keys(encryptConfig).length) {
-      return data
-    }
+  private generateKey(): Buffer {
+    return randomBytes(32)
+  }
 
-    // Process data - compress if configured
-    let processedData = Buffer.from(data, 'utf8')
-    if (encryptConfig.compress) {
-      const compressedData = await this.compressData(processedData)
-      processedData = Buffer.from(compressedData)
+  private getCurrentKey(): { key: Buffer, id: string } {
+    const currentKeyId = this.currentKeyId
+    const key = this.keys.get(currentKeyId)
+    if (!key) {
+      throw new Error(`No key found for ID ${currentKeyId}`)
     }
+    return { key, id: currentKeyId }
+  }
 
+  private encrypt(data: string): { encrypted: Buffer, iv: Buffer } {
     const { key, id } = this.getCurrentKey()
     const iv = randomBytes(16)
-    const algorithm = encryptConfig.algorithm || 'aes-256-cbc'
+    const cipher = createCipheriv('aes-256-gcm', key, iv)
 
-    try {
-      const cipher = createCipheriv(algorithm, key, iv)
-      let encrypted: Buffer
+    const encrypted = Buffer.concat([
+      cipher.update(data, 'utf8'),
+      cipher.final(),
+    ])
 
-      if (algorithm === 'aes-256-gcm') {
-        const gcmCipher = cipher as CipherGCM
-        encrypted = Buffer.concat([
-          gcmCipher.update(processedData),
-          gcmCipher.final(),
-        ])
-        const authTag = gcmCipher.getAuthTag()
-        encrypted = Buffer.concat([encrypted, authTag])
-      }
-      else {
-        encrypted = Buffer.concat([
-          cipher.update(processedData),
-          cipher.final(),
-        ])
-      }
-
-      const result = JSON.stringify({
-        iv: iv.toString('hex'),
-        data: encrypted.toString('base64'),
-        compressed: encryptConfig.compress || false,
-        algorithm,
-        keyId: id,
-      })
-      return result
-    }
-    catch (error) {
-      console.error('Encryption error:', error)
-      throw error
-    }
+    return { encrypted, iv }
   }
 
-  async decrypt(encryptedData: string): Promise<string> {
-    const encryptConfig = this.getEncryptionOptions()
-    if (!Object.keys(encryptConfig).length) {
-      return encryptedData
+  async compressData(data: Buffer): Promise<Buffer> {
+    return new Promise((resolve, reject) => {
+      const gzip = createGzip()
+      const chunks: Buffer[] = []
+
+      gzip.on('data', chunk => chunks.push(Buffer.from(chunk)))
+      gzip.on('end', () => resolve(Buffer.concat(chunks)))
+      gzip.on('error', reject)
+
+      gzip.write(data)
+      gzip.end()
+    })
+  }
+
+  getEncryptionOptions(): EncryptionConfig {
+    if (!this.config.rotation || typeof this.config.rotation === 'boolean'
+      || !this.config.rotation.encrypt) {
+      return {}
     }
 
-    try {
-      const { iv, data, compressed, algorithm = 'aes-256-cbc', keyId } = JSON.parse(encryptedData)
-
-      // Get the key used for encryption
-      let key: Buffer
-      if (keyId) {
-        // Try to get the key from the rotation system
-        const storedKey = this.encryptionKeys.get(keyId)
-        if (storedKey) {
-          key = storedKey.key
-        }
-        else {
-          // If key not found, try current key as fallback
-          const currentKey = this.getCurrentKey()
-          key = currentKey.key
-        }
-      }
-      else {
-        // If no keyId, use current key
-        const currentKey = this.getCurrentKey()
-        key = currentKey.key
-      }
-
-      // Convert IV from hex to buffer
-      const ivBuffer = Buffer.from(iv, 'hex')
-      const encryptedBuffer = Buffer.from(data, 'base64')
-
-      let decryptedBuffer: Buffer
-      if (algorithm === 'aes-256-gcm') {
-        const authTagLength = 16
-        const encryptedContent = encryptedBuffer.subarray(0, encryptedBuffer.length - authTagLength)
-        const authTag = encryptedBuffer.subarray(encryptedBuffer.length - authTagLength)
-
-        const decipher = createDecipheriv(algorithm, key, ivBuffer)
-        decipher.setAuthTag(authTag)
-        decryptedBuffer = Buffer.concat([
-          decipher.update(encryptedContent),
-          decipher.final(),
-        ])
-      }
-      else {
-        const decipher = createDecipheriv(algorithm, key, ivBuffer)
-        decryptedBuffer = Buffer.concat([
-          decipher.update(encryptedBuffer),
-          decipher.final(),
-        ])
-      }
-
-      // Decompress if needed
-      if (compressed) {
-        decryptedBuffer = await this.decompressData(decryptedBuffer)
-      }
-
-      return decryptedBuffer.toString('utf8')
+    const defaultOptions: EncryptionConfig = {
+      algorithm: 'aes-256-cbc',
+      compress: false,
     }
-    catch (error) {
-      console.error('Error decrypting log data:', error)
-      throw error
+
+    if (typeof this.config.rotation.encrypt === 'object') {
+      const encryptConfig: EncryptionConfig = this.config.rotation.encrypt
+      return {
+        ...defaultOptions,
+        ...encryptConfig,
+      }
     }
+
+    return defaultOptions
   }
 
   private async rotateLog(): Promise<void> {
@@ -614,32 +570,71 @@ export class Logger {
     }
   }
 
-  private setupRotation(): void {
-    if (isBrowserProcess())
-      return
-    if (typeof this.config.rotation === 'boolean')
+  private async compressLogFile(inputPath: string, outputPath: string): Promise<void> {
+    const readStream = createReadStream(inputPath)
+    const writeStream = createWriteStream(outputPath)
+    const gzip = createGzip()
+
+    await pipeline(readStream, gzip, writeStream)
+  }
+
+  async handleFingersCrossedBuffer(level: LogLevel, formattedEntry: string): Promise<void> {
+    if (!this.fingersCrossedConfig)
       return
 
-    const config = this.config.rotation
-    let interval: number
+    if (this.shouldActivateFingersCrossed(level) && !this.isActivated) {
+      this.isActivated = true
 
-    switch (config.frequency) {
-      case 'daily':
-        interval = 24 * 60 * 60 * 1000
-        break
-      case 'weekly':
-        interval = 7 * 24 * 60 * 60 * 1000
-        break
-      case 'monthly':
-        interval = 30 * 24 * 60 * 60 * 1000
-        break
-      default:
-        return
+      // Write all buffered entries
+      for (const entry of this.logBuffer) {
+        const formattedBufferedEntry = await this.formatter.format(entry)
+        await this.writeToFile(formattedBufferedEntry)
+        // eslint-disable-next-line no-console
+        console.log(formattedBufferedEntry)
+      }
+
+      // Clear buffer if stopBuffering is true
+      if (this.fingersCrossedConfig.stopBuffering)
+        this.logBuffer = []
     }
 
-    this.rotationTimeout = setInterval(() => {
-      void this.rotateLog()
-    }, interval)
+    if (this.isActivated) {
+      // Direct write when activated
+      await this.writeToFile(formattedEntry)
+      // eslint-disable-next-line no-console
+      console.log(formattedEntry)
+    }
+    else {
+      // Buffer the entry
+      if (this.logBuffer.length >= this.fingersCrossedConfig.bufferSize)
+        this.logBuffer.shift() // Remove oldest entry
+
+      const entry: LogEntry = {
+        timestamp: new Date(),
+        level,
+        message: formattedEntry,
+        name: this.name,
+      }
+      this.logBuffer.push(entry)
+    }
+  }
+
+  private shouldActivateFingersCrossed(level: LogLevel): boolean {
+    if (!this.fingersCrossedConfig)
+      return false
+
+    return this.getLevelValue(level) >= this.getLevelValue(this.fingersCrossedConfig.activationLevel)
+  }
+
+  private getLevelValue(level: LogLevel): number {
+    const levels: Record<LogLevel, number> = {
+      debug: 0,
+      info: 1,
+      success: 2,
+      warning: 3,
+      error: 4,
+    }
+    return levels[level]
   }
 
   private shouldLog(level: LogLevel): boolean {
@@ -653,491 +648,32 @@ export class Logger {
     return levels[level] >= levels[this.config.level]
   }
 
-  private async writeToFile(data: string): Promise<void> {
-    if (isBrowserProcess())
-      return
-
-    // Create a flag to track if this operation has been cancelled
-    const cancelled = false
-
-    // Use a custom operation tracking approach that allows us to cancel it
-    const operationPromise = (async () => {
-      try {
-        // Ensure log directory exists
-        try {
-          if (!existsSync(this.config.logDirectory)) {
-            console.error('Debug: Creating log directory:', this.config.logDirectory)
-            const mkdirSync = (await import('node:fs')).mkdirSync
-            mkdirSync(this.config.logDirectory, { recursive: true, mode: 0o755 })
-          }
-          console.error('Debug: Log directory exists:', this.config.logDirectory)
-        }
-        catch (err) {
-          console.error(`Failed to create log directory: ${err}`)
-          throw err
-        }
-
-        // Check if operation was cancelled
-        if (cancelled)
-          throw new Error('Operation cancelled: Logger was destroyed')
-
-        // Format data for file output
-        let formattedData = data
-        try {
-          // Parse the data back to a LogEntry
-          const entry = JSON.parse(data)
-          // Restore the Date object
-          entry.timestamp = new Date(entry.timestamp)
-          // Format specifically for file output
-          formattedData = await this.formatter.format(entry, true)
-          console.error('Debug: Formatted log entry:', formattedData)
-        }
-        catch (err) {
-          console.error('Debug: Error formatting data:', err)
-          // If parsing fails, use the data as-is but strip ANSI codes
-          let result = ''
-          let inEscSeq = false
-          for (let i = 0; i < data.length; i++) {
-            if (data[i] === '\x1B' && data[i + 1] === '[') {
-              inEscSeq = true
-              continue
-            }
-            if (inEscSeq) {
-              if (data[i] === 'm') {
-                inEscSeq = false
-              }
-              continue
-            }
-            result += data[i]
-          }
-          formattedData = result
-        }
-
-        // Encrypt data if configured
-        const encryptedData = await this.encrypt(formattedData)
-        console.error('Debug: Writing to file:', this.currentLogFile)
-
-        // Check if operation was cancelled
-        if (cancelled)
-          throw new Error('Operation cancelled: Logger was destroyed')
-
-        // Write to file synchronously for reliability
-        try {
-          const { writeFileSync, appendFileSync } = await import('node:fs')
-
-          // Create file if it doesn't exist with proper permissions
-          if (!existsSync(this.currentLogFile)) {
-            writeFileSync(this.currentLogFile, '', { mode: 0o644 })
-          }
-
-          // Append the log entry with a newline
-          appendFileSync(this.currentLogFile, `${encryptedData}\n`, { flag: 'a' })
-          console.error('Debug: Successfully wrote to file')
-
-          // Verify file exists and has content
-          const { statSync } = await import('node:fs')
-          const stats = statSync(this.currentLogFile)
-          console.error('Debug: File stats:', { size: stats.size, path: this.currentLogFile })
-
-          if (stats.size === 0) {
-            throw new Error('File exists but is empty after write')
-          }
-        }
-        catch (err) {
-          console.error('Error writing to file:', err)
-          throw err
-        }
-      }
-      catch (err) {
-        console.error('Error in writeToFile:', err)
-        throw err
-      }
-    })()
-
-    // Track this operation
-    this.pendingOperations.push(operationPromise)
-    const index = this.pendingOperations.length - 1
-
-    try {
-      await operationPromise
-    }
-    finally {
-      // Remove the operation from tracking
-      this.pendingOperations.splice(index, 1)
-    }
-  }
-
-  async log(level: LogLevel, message: string, ...args: any[]): Promise<void> {
-    if (!this.shouldLog(level)) {
-      return
-    }
-
-    console.error('Debug: Creating log entry:', { level, message, args, name: this.name })
-
-    const entry: LogEntry = {
-      timestamp: this.options.timestamp ? new Date(this.options.timestamp) : new Date(),
-      level,
-      message,
-      args,
-      name: this.name,
-    }
-
-    // Format for console output
-    const formattedEntry = await this.formatter.format(entry)
-
-    // Handle fingers crossed logging if enabled
-    if (this.fingersCrossedConfig) {
-      await this.handleFingersCrossedBuffer(level, formattedEntry)
-      return
-    }
-
-    // For performance tracking
-    if (level === 'info' && message.includes('(') && message.includes('ms)')) {
-      const timerId = Math.random().toString(36).slice(2)
-      this.timers.set(timerId, performance.now())
-
-      // eslint-disable-next-line no-console
-      console.log(formattedEntry)
-      try {
-        // Write to file using JSON format to preserve the entry structure
-        console.error('Debug: Writing performance log entry to file:', this.currentLogFile)
-        await this.writeToFile(JSON.stringify(entry))
-
-        // Return completion function for performance tracking
-        const startTime = this.timers.get(timerId)
-        if (startTime) {
-          const duration = performance.now() - startTime
-          this.timers.delete(timerId)
-          // Log performance info without returning a new promise
-          void this.log('info', `${message} (${duration.toFixed(2)}ms)`, ...args)
-        }
-      }
-      catch (error) {
-        console.error('Error in writeToFile for info level:', error)
-        throw error
-      }
-      return
-    }
-
-    // eslint-disable-next-line no-console
-    console.log(formattedEntry)
-    try {
-      // Write to file using JSON format to preserve the entry structure
-      console.error('Debug: Writing log entry to file:', this.currentLogFile)
-      await this.writeToFile(JSON.stringify(entry))
-      console.error('Debug: Successfully wrote log entry')
-    }
-    catch (error) {
-      console.error('Error in writeToFile:', error)
-      throw error
-    }
-  }
-
-  debug(message: string, ...args: any[]): Promise<void> {
-    return this.log('debug', message, ...args) as Promise<void>
-  }
-
-  info(message: string, ...args: any[]): Promise<void> {
-    return this.log('info', message, ...args) as Promise<void>
-  }
-
-  success(message: string, ...args: any[]): Promise<void> {
-    return this.log('success', message, ...args) as Promise<void>
-  }
-
-  warn(message: string, ...args: any[]): Promise<void> {
-    return this.log('warning', message, ...args) as Promise<void>
-  }
-
-  error(message: string, ...args: any[]): Promise<void> {
-    return this.log('error', message, ...args) as Promise<void>
-  }
-
-  extend(namespace: string): Logger {
-    const subLoggerName = `${this.name}:${namespace}`
-
-    if (!this.subLoggers.has(subLoggerName)) {
-      const subLoggerOptions: LoggerOptions = {
-        ...this.options,
-        logDirectory: this.config.logDirectory,
-        level: this.config.level,
-        format: this.config.format,
-        rotation: typeof this.config.rotation === 'boolean' ? undefined : this.config.rotation,
-      }
-
-      this.subLoggers.set(
-        subLoggerName,
-        new Logger(subLoggerName, subLoggerOptions),
-      )
-    }
-
-    return this.subLoggers.get(subLoggerName)!
-  }
-
-  only(fn: () => void): void {
-    if (process.env.DEBUG?.includes(this.name) || process.env.DEBUG === '*')
-      fn()
-  }
-
-  async readLog(filePath: string): Promise<LogEntry[]> {
-    try {
-      const content = await readFile(filePath, 'utf8')
-      const entries: LogEntry[] = []
-
-      for (const line of content.split('\n').filter(Boolean)) {
-        try {
-          const decrypted = await this.decrypt(line)
-          const entry = JSON.parse(decrypted)
-
-          // Restore Date object from ISO string
-          entry.timestamp = new Date(entry.timestamp)
-
-          entries.push(entry)
-        }
-        catch (error) {
-          console.error(`Failed to parse log entry: ${error instanceof Error ? error.message : String(error)}`)
-          // Continue processing other entries despite this error
-        }
-      }
-
-      return entries
-    }
-    catch (error) {
-      console.error(`Failed to read log file: ${error instanceof Error ? error.message : String(error)}`)
-      // Return empty array if file doesn't exist or can't be read
-      return []
-    }
-  }
-
-  async readLogsByDateRange(startDate: Date, endDate: Date): Promise<LogEntry[]> {
-    if (isBrowserProcess())
-      return []
-
-    try {
-      const files = await readdir(this.config.logDirectory)
-      const logFiles = files
-        .filter(f => f.startsWith(this.name))
-        .sort((a, b) => b.localeCompare(a))
-
-      const allEntries: LogEntry[] = []
-
-      for (const file of logFiles) {
-        const entries = await this.readLog(join(this.config.logDirectory, file))
-
-        const filteredEntries = entries.filter((entry) => {
-          const timestamp = entry.timestamp.getTime()
-          return timestamp >= startDate.getTime() && timestamp <= endDate.getTime()
-        })
-
-        allEntries.push(...filteredEntries)
-      }
-
-      return allEntries.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime())
-    }
-    catch (error) {
-      console.error(`Failed to read logs: ${error instanceof Error ? error.message : String(error)}`)
-      return []
-    }
-  }
-
-  async readBatch(
-    filePaths: string[],
-    options: {
-      batchSize?: number
-      parallel?: boolean
-      filter?: (entry: LogEntry) => boolean
-    } = {},
-  ): Promise<LogEntry[]> {
-    const {
-      batchSize = 1000,
-      parallel = true,
-      filter = () => true,
-    } = options
-
-    const entries: LogEntry[] = []
-
-    if (parallel) {
-      const batches = chunk(filePaths, batchSize)
-      for (const batch of batches) {
-        const batchEntries = await Promise.all(
-          batch.map((filePath: string) => this.readLog(filePath)),
-        )
-        entries.push(...batchEntries.flat().filter(filter))
-      }
-    }
-    else {
-      for (const filePath of filePaths) {
-        const fileEntries = await this.readLog(filePath)
-        entries.push(...fileEntries.filter(filter))
-
-        if (entries.length >= batchSize)
-          break
-      }
-    }
-
-    return entries.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime())
-  }
-
-  async *streamLogs(filePath: string, options: {
-    bufferSize?: number
-    decryption?: boolean
-  } = {}): AsyncGenerator<LogEntry> {
-    const {
-      bufferSize = 64 * 1024, // 64KB buffer
-      decryption = true,
-    } = options
-
-    const readStream = createReadStream(filePath, {
-      encoding: 'utf8',
-      highWaterMark: bufferSize,
-    })
-
-    let incomplete = ''
-
-    for await (const chunk of readStream) {
-      const lines = (incomplete + chunk).split('\n')
-      incomplete = lines.pop() || '' // Save the last incomplete line
-
-      for (const line of lines) {
-        if (!line.trim())
-          continue
-
-        try {
-          const decrypted = decryption ? await this.decrypt(line) : line
-          const entry = JSON.parse(decrypted)
-          entry.timestamp = new Date(entry.timestamp)
-          yield entry
-        }
-        catch (error) {
-          console.error(`Failed to parse log entry: ${error instanceof Error ? error.message : String(error)}`)
-        }
-      }
-    }
-
-    // Handle last line if complete
-    if (incomplete.trim()) {
-      try {
-        const decrypted = decryption ? await this.decrypt(incomplete) : incomplete
-        const entry = JSON.parse(decrypted)
-        entry.timestamp = new Date(entry.timestamp)
-        yield entry
-      }
-      catch (error) {
-        console.error(`Failed to parse last log entry: ${error instanceof Error ? error.message : String(error)}`)
-      }
-    }
-  }
-
-  async compressLogFile(inputPath: string, outputPath: string): Promise<void> {
-    const readStream = createReadStream(inputPath)
-    const writeStream = createWriteStream(outputPath)
-    const gzip = createGzip()
-
-    await pipeline(readStream, gzip, writeStream)
-  }
-
-  async reEncryptLogFile(
-    inputPath: string,
-    outputPath: string,
-    newOptions: EncryptionOptions,
-  ): Promise<void> {
-    const entries = await this.readLog(inputPath)
-    const writeStream = createWriteStream(outputPath)
-
-    try {
-      // Save current encryption options
-      const currentRotation = this.config.rotation
-      if (typeof currentRotation !== 'boolean' && currentRotation.encrypt) {
-        const previousOptions = currentRotation.encrypt
-        // Apply new encryption options
-        currentRotation.encrypt = newOptions
-
-        // Write all entries with new encryption
-        for (const entry of entries) {
-          const formattedEntry = await this.formatter.format(entry)
-          const encrypted = await this.encrypt(formattedEntry)
-          await new Promise<void>((resolve, reject) => {
-            writeStream.write(`${encrypted}\n`, (error) => {
-              if (error)
-                reject(error)
-              else
-                resolve()
-            })
-          })
-        }
-
-        // Restore previous encryption options
-        currentRotation.encrypt = previousOptions
-      }
-    }
-    finally {
-      // Ensure stream is closed even if an error occurs
-      await new Promise<void>(resolve => writeStream.end(resolve))
-    }
-  }
-
-  async validateEncryption(filePath: string): Promise<{
-    isValid: boolean
-    errors: Array<{ line: number, error: string }>
-  }> {
-    const errors: Array<{ line: number, error: string }> = []
-    let lineNumber = 0
-
-    for await (const entry of this.streamLogs(filePath)) {
-      lineNumber++
-      try {
-        // Attempt to decrypt and parse each entry
-        const formattedEntry = await this.formatter.format(entry)
-        await this.encrypt(formattedEntry) // Test encryption
-        await this.decrypt(formattedEntry) // Test decryption
-      }
-      catch (error) {
-        errors.push({
-          line: lineNumber,
-          error: error instanceof Error ? error.message : String(error),
+  async flushPendingWrites(): Promise<void> {
+    // Wait for all pending operations to complete
+    await Promise.all(this.pendingOperations.map((op) => {
+      if (op instanceof Promise) {
+        return op.catch((err) => {
+          console.error('Error in pending write operation:', err)
         })
       }
+      return Promise.resolve()
+    }))
+
+    // Ensure the current log file exists and has a file descriptor
+    if (existsSync(this.currentLogFile)) {
+      try {
+        // Open and sync the file
+        const fd = openSync(this.currentLogFile, 'r+')
+        fsyncSync(fd)
+        closeSync(fd)
+      }
+      catch (error) {
+        console.error(`Error flushing file: ${error}`)
+      }
     }
-
-    return {
-      isValid: errors.length === 0,
-      errors,
-    }
   }
 
-  deactivateFingersCrossed(): void {
-    if (!this.fingersCrossedConfig || !this.isActivated)
-      return
-
-    this.isActivated = false
-
-    if (this.fingersCrossedConfig.flushOnDeactivation) {
-      // Write any remaining buffered entries
-      this.logBuffer.forEach((entry) => {
-        void this.formatter.format(entry).then((formattedEntry) => {
-          void this.writeToFile(formattedEntry)
-          // eslint-disable-next-line no-console
-          console.log(formattedEntry)
-        })
-      })
-    }
-
-    this.logBuffer = []
-  }
-
-  getBufferedLogs(): LogEntry[] {
-    return [...this.logBuffer]
-  }
-
-  clearBuffer(): void {
-    this.logBuffer = []
-  }
-
-  isFingersCrossedActive(): boolean {
-    return this.isActivated
-  }
-
-  destroy(): Promise<void> {
+  async destroy(): Promise<void> {
     if (this.rotationTimeout)
       clearInterval(this.rotationTimeout)
 
@@ -1194,351 +730,9 @@ export class Logger {
     })()
   }
 
-  time(label: string): () => Promise<void> {
-    const start = Date.now()
-    this.timers.set(label, start)
-
-    return async () => {
-      const end = Date.now()
-      const duration = end - this.timers.get(label)!
-      await this.info(`${label} completed in ${duration}ms`)
-      this.timers.delete(label)
-    }
-  }
-
-  createReadStream(): Readable {
-    if (!this.config.logDirectory) {
-      throw new Error('Log directory not configured')
-    }
-
-    try {
-      // Ensure we're looking at the correct log file
-      let targetLogFile = this.currentLogFile
-
-      // Check if file exists and create it if it doesn't
-      if (!existsSync(targetLogFile)) {
-        console.warn(`Warning: Current log file ${targetLogFile} does not exist, searching for any log file with this name...`)
-
-        // Special handling for performance tests - try to find any log file for this logger
-        const logFiles = []
-        try {
-          const files = readdirSync(this.config.logDirectory)
-          // Look for files that match this logger's name
-          for (const file of files) {
-            if (file.startsWith(this.name) && file.endsWith('.log')) {
-              logFiles.push(join(this.config.logDirectory, file))
-            }
-          }
-        }
-        catch (err) {
-          console.error(`Error searching log directory: ${err}`)
-        }
-
-        // If we found any log files, use the most recent one
-        if (logFiles.length > 0) {
-          // Sort files by modification time (most recent first)
-          logFiles.sort((a, b) => {
-            try {
-              return statSync(b).mtimeMs - statSync(a).mtimeMs
-            }
-            catch {
-              return 0
-            }
-          })
-
-          targetLogFile = logFiles[0]
-          console.warn(`Found alternative log file: ${targetLogFile}`)
-        }
-        else {
-          // If no files found, create an empty file at the current path
-          console.warn(`No log files found, creating empty file at ${targetLogFile}`)
-          writeFileSync(targetLogFile, '', 'utf8')
-        }
-      }
-
-      // Force flush any pending writes to ensure maximum data availability
-      this.flushPendingWrites()
-
-      // Get file stats to verify it has content
-      const stats = statSync(targetLogFile)
-      if (stats.size === 0) {
-        console.warn(`Warning: Log file ${targetLogFile} exists but is empty (0 bytes)`)
-      }
-      else {
-        console.error(`Reading log file ${targetLogFile} with size ${stats.size} bytes`)
-      }
-
-      // Create a more robust read stream with larger buffer for improved performance
-      const readStream = createReadStream(targetLogFile, {
-        encoding: 'utf8',
-        highWaterMark: 256 * 1024, // Increased buffer for better throughput
-        flags: 'r',
-      })
-
-      // Add error handler to avoid unhandled errors
-      readStream.on('error', (err) => {
-        console.error(`Error in read stream: ${err.message}`)
-      })
-
-      return readStream
-    }
-    catch (error) {
-      console.error(`Failed to create read stream: ${error instanceof Error ? error.message : String(error)}`)
-      throw error
-    }
-  }
-
-  /**
-   * Force flush any pending writes to ensure maximum data availability
-   * This is especially useful in test scenarios
-   */
-  flushPendingWrites(): void {
-    // Wait for all pending operations to complete
-    for (const op of this.pendingOperations) {
-      if (op instanceof Promise) {
-        void op.catch((err) => {
-          console.error('Error in pending write operation:', err)
-        })
-      }
-    }
-
-    // Ensure the current log file exists and has a file descriptor
-    if (existsSync(this.currentLogFile)) {
-      try {
-        // Open and sync the file
-        const fd = openSync(this.currentLogFile, 'r+')
-        fsyncSync(fd)
-        closeSync(fd)
-      }
-      catch (error) {
-        console.error(`Error flushing file: ${error}`)
-      }
-    }
-  }
-
-  get isServer(): boolean {
-    return typeof window === 'undefined'
-  }
-
-  get isBrowser(): boolean {
-    return !this.isServer
-  }
-
-  async watch(options: WatchOptions): Promise<NodeJS.ReadableStream> {
-    const { level, name, format = 'text', timestamp, colors } = options
-    const stream = new PassThrough()
-
-    // Set up log file watching
-    const watcher = watch(this.config.logDirectory, { recursive: true })
-
-    // Convert FSWatcher events to async iterator
-    const events = new PassThrough({ objectMode: true })
-    watcher.on('change', (eventType, filename) => {
-      events.write({ eventType, filename })
-    })
-    watcher.on('error', (error) => {
-      events.emit('error', error)
-    })
-    watcher.on('close', () => {
-      events.end()
-    })
-
-    try {
-      for await (const event of events) {
-        if (event.eventType === 'change' && event.filename) {
-          const filePath = join(this.config.logDirectory, event.filename)
-          for await (const entry of this.streamLogs(filePath)) {
-            if ((!level || entry.level === level) && (!name || entry.name === name)) {
-              const formatted = format === 'json'
-                ? JSON.stringify(entry)
-                : await this.formatter.format({
-                  ...entry,
-                  timestamp: timestamp ? entry.timestamp : new Date(),
-                }, colors)
-              stream.write(`${formatted}\n`)
-            }
-          }
-        }
-      }
-    }
-    catch (error) {
-      console.error('Watch error:', error instanceof Error ? error.message : String(error))
-      stream.emit('error', error)
-    }
-    finally {
-      watcher.close()
-    }
-
-    return stream
-  }
-
-  async export(options: ExportOptions): Promise<NodeJS.ReadableStream> {
-    const { level, name, format = 'json', start, end } = options
-    const stream = new PassThrough()
-
-    // Read all log files in the directory
-    const files = await readdir(this.config.logDirectory)
-    for (const file of files) {
-      if (!file.endsWith('.log'))
-        continue
-
-      const filePath = join(this.config.logDirectory, file)
-      for await (const entry of this.streamLogs(filePath)) {
-        if (
-          (!level || entry.level === level)
-          && (!name || entry.name === name)
-          && (!start || entry.timestamp >= start)
-          && (!end || entry.timestamp <= end)
-        ) {
-          const formatted = format === 'json'
-            ? JSON.stringify(entry)
-            : await this.formatter.format(entry)
-          stream.write(`${formatted}\n`)
-        }
-      }
-    }
-
-    stream.end()
-    return stream
-  }
-
-  async tail(options: TailOptions): Promise<NodeJS.ReadableStream> {
-    const { level, name, colors, lines = 10 } = options
-    const stream = new PassThrough()
-
-    // Get the latest log file
-    const files = await readdir(this.config.logDirectory)
-    const latestFile = files
-      .filter(f => f.endsWith('.log'))
-      .sort()
-      .pop()
-
-    if (latestFile) {
-      const filePath = join(this.config.logDirectory, latestFile)
-      const entries: LogEntry[] = []
-
-      for await (const entry of this.streamLogs(filePath)) {
-        if ((!level || entry.level === level) && (!name || entry.name === name)) {
-          entries.push(entry)
-          if (entries.length > lines)
-            entries.shift()
-        }
-      }
-
-      for (const entry of entries) {
-        const formatted = await this.formatter.format(entry, colors)
-        stream.write(`${formatted}\n`)
-      }
-    }
-
-    stream.end()
-    return stream
-  }
-
-  async search(options: SearchOptions): Promise<NodeJS.ReadableStream> {
-    const { level, name, pattern, caseSensitive, context, start, end } = options
-    const stream = new PassThrough()
-    const regex = new RegExp(pattern, caseSensitive ? 'g' : 'gi')
-    const buffer: LogEntry[] = []
-
-    // Read all log files in the directory
-    const files = await readdir(this.config.logDirectory)
-    for (const file of files) {
-      if (!file.endsWith('.log'))
-        continue
-
-      const filePath = join(this.config.logDirectory, file)
-      for await (const entry of this.streamLogs(filePath)) {
-        if (
-          (!level || entry.level === level)
-          && (!name || entry.name === name)
-          && (!start || entry.timestamp >= start)
-          && (!end || entry.timestamp <= end)
-        ) {
-          const entryStr = JSON.stringify(entry)
-          if (regex.test(entryStr)) {
-            if (context) {
-              // Add context before match
-              const contextStart = Math.max(0, buffer.length - context)
-              const contextEntries = buffer.slice(contextStart)
-              for (const contextEntry of contextEntries) {
-                const formatted = await this.formatter.format(contextEntry)
-                stream.write(`--- Context ---\n${formatted}\n`)
-              }
-            }
-            const formatted = await this.formatter.format(entry)
-            stream.write(`${formatted}\n`)
-          }
-
-          if (context) {
-            buffer.push(entry)
-            if (buffer.length > context * 2)
-              buffer.shift()
-          }
-        }
-      }
-    }
-
-    stream.end()
-    return stream
-  }
-
-  async clear(options: ClearOptions): Promise<void> {
-    const { level, name, before } = options
-
-    const files = await readdir(this.config.logDirectory)
-    for (const file of files) {
-      if (!file.endsWith('.log'))
-        continue
-
-      const filePath = join(this.config.logDirectory, file)
-      const tempPath = `${filePath}.tmp`
-      const writeStream = createWriteStream(tempPath)
-
-      try {
-        for await (const entry of this.streamLogs(filePath)) {
-          if (
-            (!level || entry.level !== level)
-            && (!name || entry.name !== name)
-            && (!before || entry.timestamp >= before)
-          ) {
-            // Keep entries that don't match deletion criteria
-            await writeToStream(writeStream, `${JSON.stringify(entry)}\n`)
-          }
-        }
-
-        await new Promise(resolve => writeStream.end(resolve))
-        await rename(tempPath, filePath)
-      }
-      catch (error) {
-        console.error(`Error clearing logs: ${error instanceof Error ? error.message : String(error)}`)
-        try {
-          await unlink(tempPath)
-        }
-        catch {}
-        throw error
-      }
-    }
-  }
-
-  /**
-   * Gets the path to the current log file
-   * @returns The absolute path to the current log file
-   */
   getCurrentLogFilePath(): string {
     return this.currentLogFile
   }
 }
 
-// Helper function to write to stream with proper error handling
-function writeToStream(stream: Writable, data: string): Promise<void> {
-  return new Promise((resolve, reject) => {
-    if (!stream.write(data)) {
-      stream.once('drain', resolve)
-    }
-    else {
-      resolve()
-    }
-    stream.once('error', reject)
-  })
-}
+export default Logger
