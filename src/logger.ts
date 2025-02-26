@@ -1,5 +1,5 @@
 import type { CipherGCM } from 'node:crypto'
-import type { Readable } from 'node:stream'
+import type { Readable, Writable } from 'node:stream'
 import type { ClarityConfig, EncryptionConfig, Formatter, LogEntry, LoggerOptions, LogLevel } from './types'
 import { Buffer } from 'node:buffer'
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'node:crypto'
@@ -12,12 +12,14 @@ import {
   openSync,
   readdirSync,
   statSync,
+  watch,
   writeFileSync,
   writeSync,
 } from 'node:fs'
 import { readdir, readFile, rename, stat, unlink, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import process from 'node:process'
+import { PassThrough } from 'node:stream'
 import { pipeline } from 'node:stream/promises'
 import { createGunzip, createGzip } from 'node:zlib'
 import { config as defaultConfig } from './config'
@@ -52,6 +54,45 @@ const defaultFingersCrossedConfig: FingersCrossedConfig = {
 }
 
 export type BunTimer = ReturnType<typeof setTimeout>
+
+interface WatchOptions {
+  level?: LogLevel
+  name?: string
+  format?: 'json' | 'text'
+  timestamp?: boolean
+  colors?: boolean
+}
+
+interface ExportOptions {
+  level?: LogLevel
+  name?: string
+  format?: 'json' | 'text'
+  start?: Date
+  end?: Date
+}
+
+interface TailOptions {
+  level?: LogLevel
+  name?: string
+  colors?: boolean
+  lines?: number
+}
+
+interface SearchOptions {
+  level?: LogLevel
+  name?: string
+  pattern: string
+  caseSensitive?: boolean
+  context?: number
+  start?: Date
+  end?: Date
+}
+
+interface ClearOptions {
+  level?: LogLevel
+  name?: string
+  before?: Date
+}
 
 export class Logger {
   private name: string
@@ -92,12 +133,21 @@ export class Logger {
       this.config.logDirectory = defaultConfig.logDirectory
     }
 
+    console.error('Debug: Logger initialized with:', {
+      name,
+      logDirectory: this.config.logDirectory,
+      options,
+      config: this.config,
+    })
+
     this.timers = new Map()
     this.subLoggers = new Map()
     this.formatter = this.config.format === 'json'
       ? new JsonFormatter()
       : new TextFormatter(this.config)
     this.currentLogFile = this.generateLogFilename()
+
+    console.error('Debug: Current log file:', this.currentLogFile)
 
     this.encryptionKeys = new Map()
 
@@ -608,24 +658,22 @@ export class Logger {
       return
 
     // Create a flag to track if this operation has been cancelled
-    let cancelled = false
+    const cancelled = false
+
     // Use a custom operation tracking approach that allows us to cancel it
     const operationPromise = (async () => {
       try {
-        // Ensure log directory exists - use synchronous version for reliability
+        // Ensure log directory exists
         try {
-          // Create the directory if it doesn't exist
           if (!existsSync(this.config.logDirectory)) {
-            // Ensure parent directories exist
+            console.error('Debug: Creating log directory:', this.config.logDirectory)
             const mkdirSync = (await import('node:fs')).mkdirSync
-            mkdirSync(this.config.logDirectory, { recursive: true })
+            mkdirSync(this.config.logDirectory, { recursive: true, mode: 0o755 })
           }
-
-          // Double-check the directory was created
-          statSync(this.config.logDirectory)
+          console.error('Debug: Log directory exists:', this.config.logDirectory)
         }
         catch (err) {
-          console.error(`Failed to create/verify log directory: ${err}`)
+          console.error(`Failed to create log directory: ${err}`)
           throw err
         }
 
@@ -642,8 +690,10 @@ export class Logger {
           entry.timestamp = new Date(entry.timestamp)
           // Format specifically for file output
           formattedData = await this.formatter.format(entry, true)
+          console.error('Debug: Formatted log entry:', formattedData)
         }
-        catch {
+        catch (err) {
+          console.error('Debug: Error formatting data:', err)
           // If parsing fails, use the data as-is but strip ANSI codes
           let result = ''
           let inEscSeq = false
@@ -665,79 +715,55 @@ export class Logger {
 
         // Encrypt data if configured
         const encryptedData = await this.encrypt(formattedData)
+        console.error('Debug: Writing to file:', this.currentLogFile)
 
         // Check if operation was cancelled
         if (cancelled)
           throw new Error('Operation cancelled: Logger was destroyed')
 
-        // Create or append to the file - use direct synchronous approach for reliability
+        // Write to file synchronously for reliability
         try {
-          // Check if file exists
-          const fileExists = existsSync(this.currentLogFile)
+          const { writeFileSync, appendFileSync } = await import('node:fs')
 
-          // If file doesn't exist, create it with sync method for reliability
-          if (!fileExists) {
-            try {
-              writeFileSync(this.currentLogFile, '')
-            }
-            catch (err) {
-              console.error(`Failed to create file (sync): ${err}`)
-              throw err
-            }
-          }
-
-          // Check if we need to rotate before writing
-          await this.rotateLog()
-
-          // Check if operation was cancelled
-          if (cancelled)
-            throw new Error('Operation cancelled: Logger was destroyed')
-
-          // Append to current log file with newline - use sync for reliability
-          try {
-            const fd = openSync(this.currentLogFile, 'a')
-            writeSync(fd, `${encryptedData}\n`)
-
-            // Explicitly sync to ensure data is written to disk
-            fsyncSync(fd)
-            closeSync(fd)
-          }
-          catch (err) {
-            console.error(`Failed to append to file (sync): ${err}`)
-            throw err
-          }
-
-          // Verify file exists after appending
+          // Create file if it doesn't exist with proper permissions
           if (!existsSync(this.currentLogFile)) {
-            console.error('ERROR: File does not exist after write')
-            throw new Error('File does not exist after write')
+            writeFileSync(this.currentLogFile, '', { mode: 0o644 })
+          }
+
+          // Append the log entry with a newline
+          appendFileSync(this.currentLogFile, `${encryptedData}\n`, { flag: 'a' })
+          console.error('Debug: Successfully wrote to file')
+
+          // Verify file exists and has content
+          const { statSync } = await import('node:fs')
+          const stats = statSync(this.currentLogFile)
+          console.error('Debug: File stats:', { size: stats.size, path: this.currentLogFile })
+
+          if (stats.size === 0) {
+            throw new Error('File exists but is empty after write')
           }
         }
-        catch (error) {
-          console.error('Error writing to file:', error)
-          throw error
+        catch (err) {
+          console.error('Error writing to file:', err)
+          throw err
         }
       }
-      catch (error) {
-        console.error('Error in writeToFile:', error)
-        throw error
+      catch (err) {
+        console.error('Error in writeToFile:', err)
+        throw err
       }
-    })();
+    })()
 
-    // Add a method to this promise that allows us to cancel it
-    (operationPromise as any).cancel = () => {
-      cancelled = true
-    }
-
-    // Add to pending operations
+    // Track this operation
     this.pendingOperations.push(operationPromise)
+    const index = this.pendingOperations.length - 1
 
     try {
       await operationPromise
     }
     finally {
-      // Remove from pending operations when complete
-      this.pendingOperations = this.pendingOperations.filter(op => op !== operationPromise)
+      // Remove the operation from tracking
+      this.pendingOperations.splice(index, 1)
     }
   }
 
@@ -745,6 +771,8 @@ export class Logger {
     if (!this.shouldLog(level)) {
       return
     }
+
+    console.error('Debug: Creating log entry:', { level, message, args, name: this.name })
 
     const entry: LogEntry = {
       timestamp: this.options.timestamp ? new Date(this.options.timestamp) : new Date(),
@@ -772,6 +800,7 @@ export class Logger {
       console.log(formattedEntry)
       try {
         // Write to file using JSON format to preserve the entry structure
+        console.error('Debug: Writing performance log entry to file:', this.currentLogFile)
         await this.writeToFile(JSON.stringify(entry))
 
         // Return completion function for performance tracking
@@ -794,7 +823,9 @@ export class Logger {
     console.log(formattedEntry)
     try {
       // Write to file using JSON format to preserve the entry structure
+      console.error('Debug: Writing log entry to file:', this.currentLogFile)
       await this.writeToFile(JSON.stringify(entry))
+      console.error('Debug: Successfully wrote log entry')
     }
     catch (error) {
       console.error('Error in writeToFile:', error)
@@ -1292,4 +1323,222 @@ export class Logger {
   get isBrowser(): boolean {
     return !this.isServer
   }
+
+  async watch(options: WatchOptions): Promise<NodeJS.ReadableStream> {
+    const { level, name, format = 'text', timestamp, colors } = options
+    const stream = new PassThrough()
+
+    // Set up log file watching
+    const watcher = watch(this.config.logDirectory, { recursive: true })
+
+    // Convert FSWatcher events to async iterator
+    const events = new PassThrough({ objectMode: true })
+    watcher.on('change', (eventType, filename) => {
+      events.write({ eventType, filename })
+    })
+    watcher.on('error', (error) => {
+      events.emit('error', error)
+    })
+    watcher.on('close', () => {
+      events.end()
+    })
+
+    try {
+      for await (const event of events) {
+        if (event.eventType === 'change' && event.filename) {
+          const filePath = join(this.config.logDirectory, event.filename)
+          for await (const entry of this.streamLogs(filePath)) {
+            if ((!level || entry.level === level) && (!name || entry.name === name)) {
+              const formatted = format === 'json'
+                ? JSON.stringify(entry)
+                : await this.formatter.format({
+                  ...entry,
+                  timestamp: timestamp ? entry.timestamp : new Date(),
+                }, colors)
+              stream.write(`${formatted}\n`)
+            }
+          }
+        }
+      }
+    }
+    catch (error) {
+      console.error('Watch error:', error instanceof Error ? error.message : String(error))
+      stream.emit('error', error)
+    }
+    finally {
+      watcher.close()
+    }
+
+    return stream
+  }
+
+  async export(options: ExportOptions): Promise<NodeJS.ReadableStream> {
+    const { level, name, format = 'json', start, end } = options
+    const stream = new PassThrough()
+
+    // Read all log files in the directory
+    const files = await readdir(this.config.logDirectory)
+    for (const file of files) {
+      if (!file.endsWith('.log'))
+        continue
+
+      const filePath = join(this.config.logDirectory, file)
+      for await (const entry of this.streamLogs(filePath)) {
+        if (
+          (!level || entry.level === level)
+          && (!name || entry.name === name)
+          && (!start || entry.timestamp >= start)
+          && (!end || entry.timestamp <= end)
+        ) {
+          const formatted = format === 'json'
+            ? JSON.stringify(entry)
+            : await this.formatter.format(entry)
+          stream.write(`${formatted}\n`)
+        }
+      }
+    }
+
+    stream.end()
+    return stream
+  }
+
+  async tail(options: TailOptions): Promise<NodeJS.ReadableStream> {
+    const { level, name, colors, lines = 10 } = options
+    const stream = new PassThrough()
+
+    // Get the latest log file
+    const files = await readdir(this.config.logDirectory)
+    const latestFile = files
+      .filter(f => f.endsWith('.log'))
+      .sort()
+      .pop()
+
+    if (latestFile) {
+      const filePath = join(this.config.logDirectory, latestFile)
+      const entries: LogEntry[] = []
+
+      for await (const entry of this.streamLogs(filePath)) {
+        if ((!level || entry.level === level) && (!name || entry.name === name)) {
+          entries.push(entry)
+          if (entries.length > lines)
+            entries.shift()
+        }
+      }
+
+      for (const entry of entries) {
+        const formatted = await this.formatter.format(entry, colors)
+        stream.write(`${formatted}\n`)
+      }
+    }
+
+    stream.end()
+    return stream
+  }
+
+  async search(options: SearchOptions): Promise<NodeJS.ReadableStream> {
+    const { level, name, pattern, caseSensitive, context, start, end } = options
+    const stream = new PassThrough()
+    const regex = new RegExp(pattern, caseSensitive ? 'g' : 'gi')
+    const buffer: LogEntry[] = []
+
+    // Read all log files in the directory
+    const files = await readdir(this.config.logDirectory)
+    for (const file of files) {
+      if (!file.endsWith('.log'))
+        continue
+
+      const filePath = join(this.config.logDirectory, file)
+      for await (const entry of this.streamLogs(filePath)) {
+        if (
+          (!level || entry.level === level)
+          && (!name || entry.name === name)
+          && (!start || entry.timestamp >= start)
+          && (!end || entry.timestamp <= end)
+        ) {
+          const entryStr = JSON.stringify(entry)
+          if (regex.test(entryStr)) {
+            if (context) {
+              // Add context before match
+              const contextStart = Math.max(0, buffer.length - context)
+              const contextEntries = buffer.slice(contextStart)
+              for (const contextEntry of contextEntries) {
+                const formatted = await this.formatter.format(contextEntry)
+                stream.write(`--- Context ---\n${formatted}\n`)
+              }
+            }
+            const formatted = await this.formatter.format(entry)
+            stream.write(`${formatted}\n`)
+          }
+
+          if (context) {
+            buffer.push(entry)
+            if (buffer.length > context * 2)
+              buffer.shift()
+          }
+        }
+      }
+    }
+
+    stream.end()
+    return stream
+  }
+
+  async clear(options: ClearOptions): Promise<void> {
+    const { level, name, before } = options
+
+    const files = await readdir(this.config.logDirectory)
+    for (const file of files) {
+      if (!file.endsWith('.log'))
+        continue
+
+      const filePath = join(this.config.logDirectory, file)
+      const tempPath = `${filePath}.tmp`
+      const writeStream = createWriteStream(tempPath)
+
+      try {
+        for await (const entry of this.streamLogs(filePath)) {
+          if (
+            (!level || entry.level !== level)
+            && (!name || entry.name !== name)
+            && (!before || entry.timestamp >= before)
+          ) {
+            // Keep entries that don't match deletion criteria
+            await writeToStream(writeStream, `${JSON.stringify(entry)}\n`)
+          }
+        }
+
+        await new Promise(resolve => writeStream.end(resolve))
+        await rename(tempPath, filePath)
+      }
+      catch (error) {
+        console.error(`Error clearing logs: ${error instanceof Error ? error.message : String(error)}`)
+        try {
+          await unlink(tempPath)
+        }
+        catch {}
+        throw error
+      }
+    }
+  }
+
+  /**
+   * Gets the path to the current log file
+   * @returns The absolute path to the current log file
+   */
+  getCurrentLogFilePath(): string {
+    return this.currentLogFile
+  }
+}
+
+// Helper function to write to stream with proper error handling
+function writeToStream(stream: Writable, data: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (!stream.write(data)) {
+      stream.once('drain', resolve)
+    }
+    else {
+      resolve()
+    }
+    stream.once('error', reject)
+  })
 }
