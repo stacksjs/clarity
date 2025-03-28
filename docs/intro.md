@@ -161,6 +161,10 @@ clarity tail --lines 50 --follow
 - Learn about CLI usage in the [CLI Guide](./cli)
 - See advanced patterns in the [Library Guide](./library)
 
+## Stargazers
+
+[![Stargazers over time](https://starchart.cc/stacksjs/clarity.svg?variant=adaptive)](https://starchart.cc/stacksjs/clarity)
+
 ## Community & Support
 
 - [GitHub Discussions](https://github.com/stacksjs/clarity/discussions) for questions & help
