@@ -1,5 +1,3 @@
-import type { LogLevel } from '../types'
-
 export interface CliOptions {
   level?: string
   name?: string

@@ -358,6 +358,8 @@ const entries = await logger.readLog('path/to/logfile')
 Clarity supports automatic key rotation and management:
 
 ```ts
+import { Buffer } from 'node:buffer'
+
 const logger = new Logger('secure-app', {
   rotation: {
     encrypt: {

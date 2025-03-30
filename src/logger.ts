@@ -1,21 +1,16 @@
-import type { Buffer } from 'node:buffer'
-import type { BinaryLike, CipherGCM } from 'node:crypto'
-import type { Readable, Writable } from 'node:stream'
+import type { ClarityConfig, EncryptionConfig, Formatter, LogEntry, LoggerOptions, LogLevel, RotationConfig } from './types'
 
-import type { ClarityConfig, EncryptionConfig, Formatter, LogEntry, LoggerOptions, LogLevel } from './types'
-import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'node:crypto'
-import { closeSync, createReadStream, createWriteStream, existsSync, fsyncSync, openSync, readdirSync, statSync, watch, writeFileSync } from 'node:fs'
-import { appendFile, mkdir, readdir, readFile, rename, stat, unlink, writeFile } from 'node:fs/promises'
+import { Buffer } from 'node:buffer'
+import { createCipheriv, randomBytes } from 'node:crypto'
+import { closeSync, createReadStream, createWriteStream, existsSync, fsyncSync, openSync, writeFileSync } from 'node:fs'
+import { mkdir, readdir, rename, stat, unlink, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import process from 'node:process'
-import { PassThrough } from 'node:stream'
 import { pipeline } from 'node:stream/promises'
-import { createGunzip, createGzip } from 'node:zlib'
+import { createGzip } from 'node:zlib'
 
 import { config as defaultConfig } from './config'
 import { JsonFormatter } from './formatters/json'
-import { TextFormatter } from './formatters/text'
-import { chunk, isBrowserProcess } from './utils'
+import { isBrowserProcess } from './utils'
 
 // Define missing types
 type BunTimer = ReturnType<typeof setTimeout>
@@ -37,21 +32,22 @@ const defaultFingersCrossedConfig: FingersCrossedConfig = {
 // Update LoggerOptions to include formatter
 interface ExtendedLoggerOptions extends LoggerOptions {
   formatter?: Formatter
+  fingersCrossedEnabled?: boolean
   fingersCrossed?: Partial<FingersCrossedConfig>
 }
 
 export class Logger {
   private name: string
   private fileLocks: Map<string, number> = new Map()
-  private currentKeyId: string = ''
-  private keys: Map<string, BinaryLike> = new Map()
+  private currentKeyId: string | null = null
+  private keys: Map<string, Buffer> = new Map()
   private readonly config: ClarityConfig
   private readonly options: ExtendedLoggerOptions
   private readonly formatter: Formatter
   private readonly timers: Set<BunTimer> = new Set()
   private readonly subLoggers: Set<Logger> = new Set()
   private readonly fingersCrossedBuffer: string[] = []
-  private fingersCrossedConfig: FingersCrossedConfig
+  private fingersCrossedConfig: FingersCrossedConfig | null
   private fingersCrossedActive: boolean = false
   private currentLogFile: string
   private rotationTimeout?: BunTimer
@@ -66,10 +62,9 @@ export class Logger {
     this.config = { ...defaultConfig }
     this.options = this.normalizeOptions(options)
     this.formatter = this.options.formatter || new JsonFormatter()
-    this.fingersCrossedConfig = {
-      ...defaultFingersCrossedConfig,
-      ...(options.fingersCrossed || {}),
-    }
+
+    // Initialize fingers-crossed config based on flag
+    this.fingersCrossedConfig = this.initializeFingersCrossedConfig(options)
 
     // Handle config options
     const configOptions = { ...options }
@@ -90,25 +85,45 @@ export class Logger {
       this.config.logDirectory = defaultConfig.logDirectory
     }
 
-    console.error('Debug: Logger initialized with:', {
-      name,
-      logDirectory: this.config.logDirectory,
-      options,
-      config: this.config,
-    })
-
     this.currentLogFile = this.generateLogFilename()
-
-    console.error('Debug: Current log file:', this.currentLogFile)
 
     this.encryptionKeys = new Map()
 
-    if (this.config.rotation && typeof this.config.rotation !== 'boolean') {
+    // Initialize encryption if configured and valid
+    if (this.validateEncryptionConfig()) {
       this.setupRotation()
-      if (this.config.rotation.encrypt && typeof this.config.rotation.encrypt === 'object'
-        && this.config.rotation.keyRotation?.enabled) {
-        this.setupKeyRotation()
+      // Generate and set initial encryption key
+      const initialKeyId = this.generateKeyId()
+      const initialKey = this.generateKey()
+      this.currentKeyId = initialKeyId
+      this.keys.set(initialKeyId, initialKey)
+      this.encryptionKeys.set(initialKeyId, {
+        key: initialKey,
+        createdAt: new Date(),
+      })
+      this.setupKeyRotation()
+    }
+  }
+
+  private initializeFingersCrossedConfig(options: Partial<ExtendedLoggerOptions>): FingersCrossedConfig | null {
+    if (!options.fingersCrossedEnabled && options.fingersCrossed) {
+      return {
+        ...defaultFingersCrossedConfig,
+        ...options.fingersCrossed,
       }
+    }
+
+    if (!options.fingersCrossedEnabled) {
+      return null
+    }
+
+    if (!options.fingersCrossed) {
+      return { ...defaultFingersCrossedConfig }
+    }
+
+    return {
+      ...defaultFingersCrossedConfig,
+      ...options.fingersCrossed,
     }
   }
 
@@ -121,9 +136,6 @@ export class Logger {
   }
 
   private async writeToFile(data: string): Promise<void> {
-    if (isBrowserProcess())
-      return
-
     // Create a flag to track if this operation has been cancelled
     const cancelled = false
 
@@ -133,25 +145,11 @@ export class Logger {
       try {
         // Ensure log directory exists
         try {
-          console.error('Debug: [writeToFile] Checking log directory:', this.config.logDirectory)
           const dirExists = existsSync(this.config.logDirectory)
-          console.error('Debug: [writeToFile] Log directory exists?', dirExists)
 
           if (!dirExists) {
-            console.error('Debug: [writeToFile] Creating log directory:', this.config.logDirectory)
             await mkdir(this.config.logDirectory, { recursive: true, mode: 0o755 })
-            console.error('Debug: [writeToFile] Created log directory')
           }
-          console.error('Debug: [writeToFile] Log directory exists:', this.config.logDirectory)
-
-          // Double check directory was created
-          const dirStats = await stat(this.config.logDirectory)
-          console.error('Debug: [writeToFile] Log directory stats:', {
-            exists: true,
-            mode: dirStats.mode.toString(8),
-            uid: dirStats.uid,
-            gid: dirStats.gid,
-          })
         }
         catch (err) {
           console.error('Debug: [writeToFile] Failed to create log directory:', err)
@@ -162,96 +160,33 @@ export class Logger {
         if (cancelled)
           throw new Error('Operation cancelled: Logger was destroyed')
 
-        // Format data for file output
-        let formattedData = data
-        try {
-          // Parse the data back to a LogEntry
-          const entry = JSON.parse(data)
-          // Restore the Date object
-          entry.timestamp = new Date(entry.timestamp)
-          // Format specifically for file output
-          formattedData = await this.formatter.format(entry, true)
-          console.error('Debug: [writeToFile] Formatted log entry:', formattedData)
-        }
-        catch (err) {
-          console.error('Debug: [writeToFile] Error formatting data:', err)
-          // If parsing fails, use the data as-is but strip ANSI codes
-          let result = ''
-          let inEscSeq = false
-          for (let i = 0; i < data.length; i++) {
-            if (data[i] === '\x1B' && data[i + 1] === '[') {
-              inEscSeq = true
-              continue
-            }
-            if (inEscSeq) {
-              if (data[i] === 'm') {
-                inEscSeq = false
-              }
-              continue
-            }
-            result += data[i]
-          }
-          formattedData = result
-        }
-
-        // Encrypt data if configured
-        const encryptedData = await this.encrypt(formattedData)
-        console.error('Debug: [writeToFile] Writing to file:', this.currentLogFile)
-
-        // Check if operation was cancelled
-        if (cancelled)
-          throw new Error('Operation cancelled: Logger was destroyed')
+        // Only encrypt if encryption is configured
+        const dataToWrite = this.validateEncryptionConfig()
+          ? (await this.encrypt(data)).encrypted
+          : Buffer.from(data)
 
         // Write to file with proper synchronization
         try {
           // Create file if it doesn't exist with proper permissions
           const fileExists = existsSync(this.currentLogFile)
-          console.error('Debug: [writeToFile] File exists?', fileExists)
 
           if (!fileExists) {
-            console.error('Debug: [writeToFile] Creating new log file:', this.currentLogFile)
             writeFileSync(this.currentLogFile, '', { mode: 0o644 })
-            console.error('Debug: [writeToFile] Created new log file')
-
-            // Verify file was created
-            const fileStats = await stat(this.currentLogFile)
-            console.error('Debug: [writeToFile] New file stats:', {
-              exists: true,
-              mode: fileStats.mode.toString(8),
-              uid: fileStats.uid,
-              gid: fileStats.gid,
-            })
           }
 
           // Open file for appending with exclusive access
-          console.error('Debug: [writeToFile] Opening file for writing')
           fd = openSync(this.currentLogFile, 'a', 0o644)
 
-          // Append the log entry with a newline
-          console.error('Debug: [writeToFile] Appending to file:', this.currentLogFile)
-          writeFileSync(fd, `${encryptedData}\n`, { flag: 'a' })
+          // Append the log entry
+          writeFileSync(fd, dataToWrite, { flag: 'a' })
           // Force sync to ensure data is written to disk
           fsyncSync(fd)
-          console.error('Debug: [writeToFile] Successfully wrote to file')
 
           // Verify file exists and has content
           const stats = await stat(this.currentLogFile)
-          console.error('Debug: [writeToFile] Final file stats:', {
-            exists: true,
-            size: stats.size,
-            mode: stats.mode.toString(8),
-            uid: stats.uid,
-            gid: stats.gid,
-            path: this.currentLogFile,
-          })
-
           if (stats.size === 0) {
             throw new Error('File exists but is empty after write')
           }
-
-          // List directory contents to verify
-          const dirContents = await readdir(this.config.logDirectory)
-          console.error('Debug: [writeToFile] Directory contents after write:', dirContents)
         }
         catch (err) {
           console.error('Debug: [writeToFile] Error writing to file:', err)
@@ -262,7 +197,6 @@ export class Logger {
           if (fd !== undefined) {
             try {
               closeSync(fd)
-              console.error('Debug: [writeToFile] Closed file descriptor')
             }
             catch (err) {
               console.error('Debug: [writeToFile] Error closing file descriptor:', err)
@@ -355,52 +289,62 @@ export class Logger {
   }
 
   setupKeyRotation(): void {
-    if (typeof this.config.rotation === 'boolean')
+    // Double-check encryption config is valid
+    if (!this.validateEncryptionConfig()) {
+      console.error('Invalid encryption configuration detected during key rotation setup')
       return
-    const keyRotation = this.config.rotation.keyRotation
-    if (!keyRotation?.enabled || !keyRotation.interval || !keyRotation.maxKeys)
-      return
+    }
 
-    // Generate initial key
-    const initialKeyId = this.generateKeyId()
-    const timestamp = typeof this.config.timestamp === 'string' || typeof this.config.timestamp === 'number'
-      ? new Date(this.config.timestamp)
-      : new Date()
+    const rotation = this.config.rotation as RotationConfig
+    const keyRotation = rotation.keyRotation!
 
-    this.encryptionKeys.set(initialKeyId, {
-      key: this.generateKey(),
-      createdAt: timestamp,
-    })
-
-    // Set up key rotation interval
+    // Ensure interval is a valid number
+    const rotationInterval = typeof keyRotation.interval === 'number' ? keyRotation.interval : 60
+    // Set up key rotation interval with minimum bounds checking
+    const interval = Math.max(rotationInterval, 60) * 1000 // Minimum 1 minute interval
     this.keyRotationTimeout = setInterval(() => {
       this.rotateKeys().catch((error) => {
         console.error('Error rotating keys:', error)
       })
-    }, keyRotation.interval * 1000)
+    }, interval)
   }
 
   async rotateKeys(): Promise<void> {
-    if (typeof this.config.rotation === 'boolean')
+    // Double-check encryption config is valid
+    if (!this.validateEncryptionConfig()) {
+      console.error('Invalid encryption configuration detected during key rotation')
       return
-    const keyRotation = this.config.rotation.keyRotation
-    if (!keyRotation?.enabled || !keyRotation.maxKeys)
-      return
+    }
+
+    const rotation = this.config.rotation as RotationConfig
+    const keyRotation = rotation.keyRotation!
 
     // Generate new key
     const newKeyId = this.generateKeyId()
+    const newKey = this.generateKey()
+
+    // Update current key ID
+    this.currentKeyId = newKeyId
+
+    // Store in both key maps
+    this.keys.set(newKeyId, newKey)
     this.encryptionKeys.set(newKeyId, {
-      key: this.generateKey(),
+      key: newKey,
       createdAt: new Date(),
     })
 
-    // Remove old keys if we exceed maxKeys
+    // Remove old keys if we exceed maxKeys (ensure at least 1 key)
     const sortedKeys = Array.from(this.encryptionKeys.entries())
       .sort(([, a], [, b]) => b.createdAt.getTime() - a.createdAt.getTime())
 
-    if (sortedKeys.length > keyRotation.maxKeys) {
-      for (const [keyId] of sortedKeys.slice(keyRotation.maxKeys))
+    // Ensure maxKeys is a valid number
+    const maxKeyCount = typeof keyRotation.maxKeys === 'number' ? keyRotation.maxKeys : 1
+    const maxKeys = Math.max(1, maxKeyCount)
+    if (sortedKeys.length > maxKeys) {
+      for (const [keyId] of sortedKeys.slice(maxKeys)) {
         this.encryptionKeys.delete(keyId)
+        this.keys.delete(keyId)
+      }
     }
   }
 
@@ -413,22 +357,24 @@ export class Logger {
   }
 
   private getCurrentKey(): { key: Buffer, id: string } {
-    const currentKeyId = this.currentKeyId
-    const key = this.keys.get(currentKeyId)
-    if (!key) {
-      throw new Error(`No key found for ID ${currentKeyId}`)
+    if (!this.currentKeyId) {
+      throw new Error('Encryption is not properly initialized. Make sure encryption is enabled in the configuration.')
     }
-    return { key, id: currentKeyId }
+    const key = this.keys.get(this.currentKeyId)
+    if (!key) {
+      throw new Error(`No key found for ID ${this.currentKeyId}. The encryption key may have been rotated or removed.`)
+    }
+    return { key, id: this.currentKeyId }
   }
 
   private encrypt(data: string): { encrypted: Buffer, iv: Buffer } {
-    const { key, id } = this.getCurrentKey()
+    const { key } = this.getCurrentKey()
     const iv = randomBytes(16)
     const cipher = createCipheriv('aes-256-gcm', key, iv)
 
     const encrypted = Buffer.concat([
-      cipher.update(data, 'utf8'),
-      cipher.final(),
+      Buffer.from(cipher.update(data, 'utf8')),
+      Buffer.from(cipher.final()),
     ])
 
     return { encrypted, iv }
@@ -437,10 +383,10 @@ export class Logger {
   async compressData(data: Buffer): Promise<Buffer> {
     return new Promise((resolve, reject) => {
       const gzip = createGzip()
-      const chunks: Buffer[] = []
+      const chunks: Uint8Array[] = []
 
-      gzip.on('data', chunk => chunks.push(Buffer.from(chunk)))
-      gzip.on('end', () => resolve(Buffer.concat(chunks)))
+      gzip.on('data', chunk => chunks.push(chunk))
+      gzip.on('end', () => resolve(Buffer.from(Buffer.concat(chunks))))
       gzip.on('error', reject)
 
       gzip.write(data)
@@ -733,6 +679,89 @@ export class Logger {
   getCurrentLogFilePath(): string {
     return this.currentLogFile
   }
-}
 
+  private async log(level: LogLevel, message: string, ...args: any[]): Promise<void> {
+    if (!this.shouldLog(level))
+      return
+
+    const timestamp = new Date()
+    const formattedDate = timestamp.toISOString()
+      .replace('T', ' ')
+      .slice(0, 19) // Get YYYY-MM-DD HH:mm:ss format
+
+    // Format the message and args
+    let formattedMessage = message
+    if (args && args.length > 0) {
+      // If args is an object, stringify it
+      if (args.length === 1 && typeof args[0] === 'object') {
+        formattedMessage = `${message} ${JSON.stringify(args[0], null, 2)}`
+      }
+      else {
+        formattedMessage = `${message} ${args.join(' ')}`
+      }
+    }
+
+    // Create the log entry in the desired format
+    const logEntry = `[${formattedDate}] local.${level.toUpperCase()}: ${formattedMessage}\n`
+
+    // Check if log directory exists, if not create it
+    if (!existsSync(this.config.logDirectory)) {
+      await mkdir(this.config.logDirectory, { recursive: true, mode: 0o755 })
+    }
+
+    const fileExists = existsSync(this.currentLogFile)
+
+    if (!fileExists) {
+      await writeFile(this.currentLogFile, '', { mode: 0o644 })
+    }
+
+    // Write directly to file
+    await this.writeToFile(logEntry)
+  }
+
+  async debug(message: string, ...args: any[]): Promise<void> {
+    await this.log('debug', message, ...args)
+  }
+
+  async info(message: string, ...args: any[]): Promise<void> {
+    await this.log('info', message, ...args)
+  }
+
+  async success(message: string, ...args: any[]): Promise<void> {
+    await this.log('success', message, ...args)
+  }
+
+  async warn(message: string, ...args: any[]): Promise<void> {
+    await this.log('warning', message, ...args)
+  }
+
+  async error(message: string, ...args: any[]): Promise<void> {
+    await this.log('error', message, ...args)
+  }
+
+  private validateEncryptionConfig(): boolean {
+    if (!this.config.rotation)
+      return false
+    if (typeof this.config.rotation === 'boolean')
+      return false
+
+    // Type assertion since we know it's not boolean at this point
+    const rotation = this.config.rotation as RotationConfig
+    const { encrypt, keyRotation } = rotation
+
+    // Validate encryption config
+    if (!encrypt || typeof encrypt !== 'object')
+      return false
+
+    // Validate key rotation settings
+    if (!keyRotation?.enabled)
+      return false
+    if (typeof keyRotation.interval !== 'number' || keyRotation.interval <= 0)
+      return false
+    if (typeof keyRotation.maxKeys !== 'number' || keyRotation.maxKeys <= 0)
+      return false
+
+    return true
+  }
+}
 export default Logger

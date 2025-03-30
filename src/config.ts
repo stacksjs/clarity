@@ -1,11 +1,15 @@
 import type { ClarityConfig } from './types'
-import { homedir } from 'node:os'
 import { join } from 'node:path'
 import process from 'node:process'
 import { loadConfig as bunfigLoadConfig } from 'bunfig'
 
-// Default log directory is in user's home directory
-const defaultLogDirectory = process.env.CLARITY_LOG_DIR || join(homedir(), '.clarity', 'logs')
+// Get project root directory (where the package.json is located)
+function getProjectRoot(): string {
+  return process.cwd()
+}
+
+// Default log directory is in project root
+const defaultLogDirectory = process.env.CLARITY_LOG_DIR || join(getProjectRoot(), 'logs')
 
 export const defaultConfig: ClarityConfig = {
   level: 'info',
