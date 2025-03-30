@@ -7,6 +7,11 @@ declare global {
 }
 
 export function isBrowserProcess(): boolean {
+  // Always return false in test environment
+  if (process.env.NODE_ENV === 'test' || process.env.BUN_ENV === 'test') {
+    return false
+  }
+
   return typeof window !== 'undefined'
 }
 

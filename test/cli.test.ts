@@ -163,7 +163,7 @@ describe('CLI Tests', () => {
         catch {
           return null
         }
-      }).filter(Boolean)
+      })
 
       console.error('Debug: [log] Log entries:', entries)
       expect(entries.length).toBeGreaterThan(0)

@@ -137,3 +137,14 @@ export interface LoggerOptions {
     stopBuffering?: boolean
   }
 }
+
+export interface Logger {
+  debug: (message: string, ...args: any[]) => Promise<void>
+  info: (message: string, ...args: any[]) => Promise<void>
+  success: (message: string, ...args: any[]) => Promise<void>
+  warn: (message: string, ...args: any[]) => Promise<void>
+  error: (message: string, ...args: any[]) => Promise<void>
+  destroy: () => Promise<void>
+  createReadStream: () => NodeJS.ReadableStream
+  decrypt?: (data: string) => Promise<string>
+}

@@ -32,8 +32,8 @@ export class TextFormatter implements Formatter {
   constructor(private config: ClarityConfig) { }
 
   async format(entry: LogEntry, forFile: boolean = false): Promise<string> {
-    const timestamp = this.config.timestamp ? `${colors.gray(entry.timestamp.toISOString())} ` : ''
-    const name = colors.gray(`[${entry.name}]`)
+    const timestamp = this.config.timestamp ? `${colors.colorize(entry.timestamp.toISOString(), colors.gray)} ` : ''
+    const name = colors.colorize(`[${entry.name}]`, colors.gray)
 
     const levelSymbols: Record<LogLevel, string> = {
       debug: s('🔍', 'D'),
@@ -43,7 +43,7 @@ export class TextFormatter implements Formatter {
       error: s('❌', '×'),
     }
 
-    const levelColors: Record<LogLevel, (text: string) => string> = {
+    const levelColors: Record<LogLevel, string> = {
       debug: colors.gray,
       info: colors.blue,
       success: colors.green,
@@ -67,7 +67,7 @@ export class TextFormatter implements Formatter {
 
     const symbol = this.config.colors ? levelSymbols[entry.level] : ''
     message = this.config.colors
-      ? levelColors[entry.level](message)
+      ? colors.colorize(message, levelColors[entry.level])
       : message
 
     // For file output, put timestamp at beginning
@@ -108,10 +108,10 @@ export class TextFormatter implements Formatter {
           if (funcLocationParts.length > 1) {
             const fnName = funcLocationParts[0]
             const location = funcLocationParts[1].replace(')', '')
-            return `  ${colors.gray(`at ${ANSI.cyan}${fnName}${ANSI.reset} (${location})`)}`
+            return `  ${colors.colorize(`at ${colors.colorize(fnName, ANSI.cyan)} (${location})`, colors.gray)}`
           }
         }
-        return `  ${colors.gray(line.trim())}`
+        return `  ${colors.colorize(line.trim(), colors.gray)}`
       }
       return `  ${line}`
     })

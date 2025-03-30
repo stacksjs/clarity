@@ -34,6 +34,7 @@ interface ExtendedLoggerOptions extends LoggerOptions {
   formatter?: Formatter
   fingersCrossedEnabled?: boolean
   fingersCrossed?: Partial<FingersCrossedConfig>
+  enabled?: boolean
 }
 
 export class Logger {
@@ -56,12 +57,14 @@ export class Logger {
   private logBuffer: LogEntry[] = []
   private isActivated: boolean = false
   private pendingOperations: Promise<any>[] = [] // Track pending operations
+  private enabled: boolean
 
   constructor(name: string, options: Partial<ExtendedLoggerOptions> = {}) {
     this.name = name
     this.config = { ...defaultConfig }
     this.options = this.normalizeOptions(options)
     this.formatter = this.options.formatter || new JsonFormatter()
+    this.enabled = options.enabled ?? true
 
     // Initialize fingers-crossed config based on flag
     this.fingersCrossedConfig = this.initializeFingersCrossedConfig(options)
@@ -127,12 +130,32 @@ export class Logger {
     }
   }
 
-  private normalizeOptions(_options: Partial<ExtendedLoggerOptions>): ExtendedLoggerOptions {
-    // Implementation of normalizeOptions method
-    return {
+  private normalizeOptions(options: Partial<ExtendedLoggerOptions>): ExtendedLoggerOptions {
+    const defaultOptions: ExtendedLoggerOptions = {
       format: 'json',
+      level: 'info',
+      logDirectory: defaultConfig.logDirectory,
+      rotation: undefined,
+      timestamp: undefined,
       fingersCrossed: {},
-    } as ExtendedLoggerOptions
+      enabled: true,
+      formatter: undefined,
+    }
+
+    // Merge with provided options, handling undefined values
+    const mergedOptions = {
+      ...defaultOptions,
+      ...Object.fromEntries(
+        Object.entries(options).filter(([, value]) => value !== undefined),
+      ),
+    }
+
+    // Ensure level is valid
+    if (!mergedOptions.level || !['debug', 'info', 'success', 'warning', 'error'].includes(mergedOptions.level)) {
+      mergedOptions.level = defaultOptions.level
+    }
+
+    return mergedOptions
   }
 
   private async writeToFile(data: string): Promise<void> {
@@ -145,11 +168,7 @@ export class Logger {
       try {
         // Ensure log directory exists
         try {
-          const dirExists = existsSync(this.config.logDirectory)
-
-          if (!dirExists) {
-            await mkdir(this.config.logDirectory, { recursive: true, mode: 0o755 })
-          }
+          await mkdir(this.config.logDirectory, { recursive: true, mode: 0o755 })
         }
         catch (err) {
           console.error('Debug: [writeToFile] Failed to create log directory:', err)
@@ -168,10 +187,8 @@ export class Logger {
         // Write to file with proper synchronization
         try {
           // Create file if it doesn't exist with proper permissions
-          const fileExists = existsSync(this.currentLogFile)
-
-          if (!fileExists) {
-            writeFileSync(this.currentLogFile, '', { mode: 0o644 })
+          if (!existsSync(this.currentLogFile)) {
+            await writeFile(this.currentLogFile, '', { mode: 0o644 })
           }
 
           // Open file for appending with exclusive access
@@ -182,10 +199,22 @@ export class Logger {
           // Force sync to ensure data is written to disk
           fsyncSync(fd)
 
+          // Close the file descriptor before checking size
+          if (fd !== undefined) {
+            closeSync(fd)
+            fd = undefined
+          }
+
           // Verify file exists and has content
           const stats = await stat(this.currentLogFile)
           if (stats.size === 0) {
-            throw new Error('File exists but is empty after write')
+            // If file is empty, try writing directly
+            await writeFile(this.currentLogFile, dataToWrite, { flag: 'w', mode: 0o644 })
+            // Verify again
+            const retryStats = await stat(this.currentLogFile)
+            if (retryStats.size === 0) {
+              throw new Error('File exists but is empty after retry write')
+            }
           }
         }
         catch (err) {
@@ -296,7 +325,12 @@ export class Logger {
     }
 
     const rotation = this.config.rotation as RotationConfig
-    const keyRotation = rotation.keyRotation!
+    const keyRotation = rotation.keyRotation
+
+    // Skip if key rotation is not configured
+    if (!keyRotation?.enabled) {
+      return
+    }
 
     // Ensure interval is a valid number
     const rotationInterval = typeof keyRotation.interval === 'number' ? keyRotation.interval : 60
@@ -371,13 +405,17 @@ export class Logger {
     const { key } = this.getCurrentKey()
     const iv = randomBytes(16)
     const cipher = createCipheriv('aes-256-gcm', key, iv)
-
     const encrypted = Buffer.concat([
-      Buffer.from(cipher.update(data, 'utf8')),
-      Buffer.from(cipher.final()),
+      cipher.update(data, 'utf8'),
+      cipher.final(),
     ])
+    const authTag = cipher.getAuthTag()
 
-    return { encrypted, iv }
+    // Return encrypted data with IV and auth tag
+    return {
+      encrypted: Buffer.concat([iv, encrypted, authTag]),
+      iv,
+    }
   }
 
   async compressData(data: Buffer): Promise<Buffer> {
@@ -584,6 +622,9 @@ export class Logger {
   }
 
   private shouldLog(level: LogLevel): boolean {
+    if (!this.enabled)
+      return false
+
     const levels: Record<LogLevel, number> = {
       debug: 0,
       info: 1,
@@ -686,18 +727,38 @@ export class Logger {
 
     const timestamp = new Date()
     const formattedDate = timestamp.toISOString()
-      .replace('T', ' ')
-      .slice(0, 19) // Get YYYY-MM-DD HH:mm:ss format
 
-    // Format the message and args
+    // Format the message with format strings
     let formattedMessage = message
     if (args && args.length > 0) {
-      // If args is an object, stringify it
-      if (args.length === 1 && typeof args[0] === 'object') {
-        formattedMessage = `${message} ${JSON.stringify(args[0], null, 2)}`
-      }
-      else {
-        formattedMessage = `${message} ${args.join(' ')}`
+      // Handle format strings
+      const formatRegex = /%([sdijfo%])/g
+      let argIndex = 0
+      formattedMessage = message.replace(formatRegex, (match, type) => {
+        if (type === '%')
+          return '%'
+        if (argIndex >= args.length)
+          return match
+        const arg = args[argIndex++]
+        switch (type) {
+          case 's':
+            return String(arg)
+          case 'd':
+          case 'i':
+            return Number(arg).toString()
+          case 'j':
+          case 'o':
+            return JSON.stringify(arg, null, 2)
+          default:
+            return match
+        }
+      })
+
+      // Append any remaining args
+      if (argIndex < args.length) {
+        formattedMessage += ` ${args.slice(argIndex).map(arg =>
+          typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg),
+        ).join(' ')}`
       }
     }
 
@@ -717,6 +778,27 @@ export class Logger {
 
     // Write directly to file
     await this.writeToFile(logEntry)
+  }
+
+  /**
+   * Start timing an operation
+   * @param label The label for the operation being timed
+   * @returns A function that when called with optional metadata will stop the timer and log the elapsed time
+   */
+  time(label: string): (metadata?: Record<string, any>) => Promise<void> {
+    const start = performance.now()
+
+    return async (metadata?: Record<string, any>) => {
+      const end = performance.now()
+      const elapsed = Math.round(end - start)
+
+      if (metadata) {
+        await this.info(`${label} completed in ${elapsed}ms`, metadata)
+      }
+      else {
+        await this.info(`${label} completed in ${elapsed}ms`)
+      }
+    }
   }
 
   async debug(message: string, ...args: any[]): Promise<void> {
@@ -747,21 +829,182 @@ export class Logger {
 
     // Type assertion since we know it's not boolean at this point
     const rotation = this.config.rotation as RotationConfig
-    const { encrypt, keyRotation } = rotation
+    const { encrypt } = rotation
 
-    // Validate encryption config
-    if (!encrypt || typeof encrypt !== 'object')
-      return false
+    // Basic validation - just check if encryption is enabled
+    return !!encrypt
+  }
 
-    // Validate key rotation settings
-    if (!keyRotation?.enabled)
-      return false
-    if (typeof keyRotation.interval !== 'number' || keyRotation.interval <= 0)
-      return false
-    if (typeof keyRotation.maxKeys !== 'number' || keyRotation.maxKeys <= 0)
-      return false
+  /**
+   * Execute a function only if logging is enabled
+   * @param fn Function to execute if logging is enabled
+   * @returns The result of the function if executed, undefined otherwise
+   */
+  async only<T>(fn: () => T | Promise<T>): Promise<T | undefined> {
+    if (!this.enabled)
+      return undefined
 
-    return true
+    return await fn()
+  }
+
+  /**
+   * Check if logging is enabled
+   * @returns boolean indicating if logging is enabled
+   */
+  isEnabled(): boolean {
+    return this.enabled
+  }
+
+  /**
+   * Enable or disable logging
+   * @param enabled boolean to enable or disable logging
+   */
+  setEnabled(enabled: boolean): void {
+    this.enabled = enabled
+  }
+
+  /**
+   * Create a child logger with a sub-namespace
+   * @param namespace The namespace for the child logger
+   * @returns A new Logger instance with the combined namespace
+   */
+  extend(namespace: string): Logger {
+    const childName = `${this.name}:${namespace}`
+    const childLogger = new Logger(childName, {
+      ...this.options,
+      logDirectory: this.config.logDirectory,
+      level: this.config.level,
+      format: this.config.format,
+      rotation: typeof this.config.rotation === 'boolean' ? undefined : this.config.rotation,
+      timestamp: typeof this.config.timestamp === 'boolean' ? undefined : this.config.timestamp,
+    })
+
+    // Add to subLoggers set for cleanup
+    this.subLoggers.add(childLogger)
+
+    return childLogger
+  }
+
+  createReadStream(): NodeJS.ReadableStream {
+    if (isBrowserProcess())
+      throw new Error('createReadStream is not supported in browser environments')
+
+    if (!existsSync(this.currentLogFile))
+      throw new Error(`Log file does not exist: ${this.currentLogFile}`)
+
+    return createReadStream(this.currentLogFile, { encoding: 'utf8' })
+  }
+
+  async decrypt(data: string): Promise<string> {
+    if (!this.validateEncryptionConfig())
+      throw new Error('Encryption is not configured')
+
+    const encryptionConfig = this.config.rotation as RotationConfig
+    if (!encryptionConfig.encrypt || typeof encryptionConfig.encrypt === 'boolean')
+      throw new Error('Invalid encryption configuration')
+
+    // Use the current key for decryption
+    if (!this.currentKeyId || !this.keys.has(this.currentKeyId))
+      throw new Error('No valid encryption key available')
+
+    const key = this.keys.get(this.currentKeyId)!
+
+    try {
+      // Convert input to buffer if it's a string
+      const encryptedData = typeof data === 'string' ? Buffer.from(data) : data
+
+      // Extract IV (16 bytes), auth tag (16 bytes), and ciphertext
+      const iv = encryptedData.slice(0, 16)
+      const authTag = encryptedData.slice(-16)
+      const ciphertext = encryptedData.slice(16, -16)
+
+      // Create decipher
+      const decipher = createCipheriv('aes-256-gcm', key, iv) as any
+      decipher.setAuthTag(authTag)
+
+      // Decrypt
+      const decrypted = Buffer.concat([
+        decipher.update(ciphertext),
+        decipher.final(),
+      ])
+
+      return decrypted.toString('utf8')
+    }
+    catch (err) {
+      throw new Error(`Decryption failed: ${err instanceof Error ? err.message : String(err)}`)
+    }
+  }
+
+  /**
+   * Get the current log level
+   * @returns The current log level
+   */
+  getLevel(): LogLevel {
+    return this.config.level
+  }
+
+  /**
+   * Get the current log directory
+   * @returns The current log directory
+   */
+  getLogDirectory(): string {
+    return this.config.logDirectory
+  }
+
+  /**
+   * Get the current format
+   * @returns The current format
+   */
+  getFormat(): string | undefined {
+    return this.config.format
+  }
+
+  /**
+   * Get the current rotation config
+   * @returns The current rotation config
+   */
+  getRotationConfig(): RotationConfig | boolean | undefined {
+    return this.config.rotation
+  }
+
+  /**
+   * Check if the logger is running in browser mode
+   * @returns true if running in browser mode
+   */
+  isBrowserMode(): boolean {
+    return isBrowserProcess()
+  }
+
+  /**
+   * Check if the logger is running in server mode
+   * @returns true if running in server mode
+   */
+  isServerMode(): boolean {
+    return !isBrowserProcess()
+  }
+
+  /**
+   * Set encryption key for testing purposes
+   * @param keyId The key ID
+   * @param key The encryption key
+   */
+  setTestEncryptionKey(keyId: string, key: Buffer): void {
+    this.currentKeyId = keyId
+    this.keys.set(keyId, key)
+  }
+
+  /**
+   * Get current key info for testing purposes
+   * @returns The current key info or null if no key is set
+   */
+  getTestCurrentKey(): { id: string, key: Buffer } | null {
+    if (!this.currentKeyId || !this.keys.has(this.currentKeyId)) {
+      return null
+    }
+    return {
+      id: this.currentKeyId,
+      key: this.keys.get(this.currentKeyId)!,
+    }
   }
 }
 export default Logger
