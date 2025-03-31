@@ -225,4 +225,3 @@ Settings are applied in this order (later overrides earlier):
 
 - Learn about CLI usage in the [CLI Guide](./cli)
 - See advanced patterns in the [Library Guide](./library)
-- Check out [examples](./examples) for more configuration scenarios

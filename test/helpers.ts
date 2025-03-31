@@ -1,4 +1,4 @@
-import type { Logger } from '../src/logger'
+import type { Logger } from '@stacksjs/clarity'
 import type { LogEntry } from '../src/types'
 import { Buffer } from 'node:buffer'
 import { readdir, readFile } from 'node:fs/promises'
@@ -70,8 +70,8 @@ export class FSHelper {
     let contents = ''
 
     for (const file of files) {
-      const fileContents = await readFile(file, 'utf-8')
-      const lines = fileContents.split('\n').filter(Boolean)
+      const fileContents = await readFile(file) // Read as buffer
+      const lines = fileContents.toString().split('\n').filter(Boolean)
 
       for (const line of lines) {
         try {
@@ -81,21 +81,15 @@ export class FSHelper {
           }
           else {
             try {
-              processedLine = await this.logger.decrypt(line)
+              // Try to decode as base64 first
+              const encryptedBuffer = Buffer.from(line, 'base64')
+              console.log('Encrypted buffer: ', encryptedBuffer)
+              processedLine = await this.logger.decrypt(encryptedBuffer)
             }
             catch (error) {
-              // If decryption fails, try to parse it as a raw line
+              // If base64 decoding or decryption fails, use raw line
               console.error('Error decrypting log data:', error)
-              try {
-                // Check if it's a valid JSON string
-                JSON.parse(line)
-                // If it is, skip this line as it's encrypted but we can't decrypt it
-                continue
-              }
-              catch {
-                // If it's not a valid JSON string, treat it as a raw line
-                processedLine = line
-              }
+              processedLine = line
             }
           }
 
@@ -107,7 +101,6 @@ export class FSHelper {
             const message = afterTest.split(' ').slice(1).join(' ').trim()
             if (message) {
               contents += `${timestamp}  ${message}\n`
-              console.error('Extracted message:', message)
             }
           }
           else {
@@ -123,17 +116,14 @@ export class FSHelper {
       }
     }
 
-    console.error('Final contents:', contents)
-    const result = contents.trim()
-    console.error('Decrypted log contents:', result)
-    return result
+    return contents.trim()
   }
 
   async getLogFiles(): Promise<string[]> {
-    console.error('Looking for log files in directory:', this.logger.config.logDirectory)
-    const files = await readdir(this.logger.config.logDirectory)
+    console.error('Looking for log files in directory:', this.logger.getLogDirectory())
+    const files = await readdir(this.logger.getLogDirectory())
     console.error('Found files:', files)
-    const fullPaths = files.map(file => join(this.logger.config.logDirectory, file))
+    const fullPaths = files.map(file => join(this.logger.getLogDirectory(), file))
     console.error('Full paths:', fullPaths)
     return fullPaths
   }

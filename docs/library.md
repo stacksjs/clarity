@@ -561,4 +561,3 @@ const logger = new Logger('high-traffic', {
 
 - Explore [Configuration Options](./config) for customization
 - Learn about [CLI Tools](./cli) for log management
-- Check out [Examples](./examples) for more use cases

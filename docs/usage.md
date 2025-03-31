@@ -621,4 +621,3 @@ const logger = new Logger('app', {
 - Explore [Configuration Options](./config) for customization
 - Learn about [CLI Tools](./cli) for log management
 - See [Library Reference](./library) for detailed API docs
-- Check out [Examples](./examples) for more use cases

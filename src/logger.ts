@@ -1,7 +1,7 @@
 import type { ClarityConfig, EncryptionConfig, Formatter, LogEntry, LoggerOptions, LogLevel, RotationConfig } from './types'
 
 import { Buffer } from 'node:buffer'
-import { createCipheriv, randomBytes } from 'node:crypto'
+import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto'
 import { closeSync, createReadStream, createWriteStream, existsSync, fsyncSync, openSync, writeFileSync } from 'node:fs'
 import { mkdir, readdir, rename, stat, unlink, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
@@ -895,7 +895,7 @@ export class Logger {
     return createReadStream(this.currentLogFile, { encoding: 'utf8' })
   }
 
-  async decrypt(data: string): Promise<string> {
+  async decrypt(data: string | Buffer): Promise<string> {
     if (!this.validateEncryptionConfig())
       throw new Error('Encryption is not configured')
 
@@ -911,15 +911,15 @@ export class Logger {
 
     try {
       // Convert input to buffer if it's a string
-      const encryptedData = typeof data === 'string' ? Buffer.from(data) : data
+      const encryptedData = Buffer.isBuffer(data) ? data : Buffer.from(data, 'base64')
 
       // Extract IV (16 bytes), auth tag (16 bytes), and ciphertext
       const iv = encryptedData.slice(0, 16)
       const authTag = encryptedData.slice(-16)
       const ciphertext = encryptedData.slice(16, -16)
 
-      // Create decipher
-      const decipher = createCipheriv('aes-256-gcm', key, iv) as any
+      // Create decipher with correct method
+      const decipher = createDecipheriv('aes-256-gcm', key, iv)
       decipher.setAuthTag(authTag)
 
       // Decrypt
@@ -1005,6 +1005,10 @@ export class Logger {
       id: this.currentKeyId,
       key: this.keys.get(this.currentKeyId)!,
     }
+  }
+
+  getConfig(): ClarityConfig {
+    return this.config
   }
 }
 export default Logger
