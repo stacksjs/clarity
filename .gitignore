@@ -13,3 +13,5 @@ temp
 docs/.vitepress/cache
 test-logs
 test-logs-*
+bin/clarity
+bin/clarity*

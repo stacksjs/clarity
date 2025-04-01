@@ -43,10 +43,10 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            bin/clarity-linux-x64
-            bin/clarity-linux-arm64
-            bin/clarity-windows-x64.exe
-            bin/clarity-darwin-x64
-            bin/clarity-darwin-arm64
+            bin/clarity-linux-x64.zip
+            bin/clarity-linux-arm64.zip
+            bin/clarity-windows-x64.zip
+            bin/clarity-darwin-x64.zip
+            bin/clarity-darwin-arm64.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
