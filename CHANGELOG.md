@@ -1,3 +1,67 @@
+## v0.2.0...main
+
+[compare changes](https://github.com/stacksjs/clarity/compare/v0.2.0...main)
+
+### 🚀 Enhancements
+
+- Add time-based rotation functionality ([3bcb2be](https://github.com/stacksjs/clarity/commit/3bcb2be))
+
+### 📖 Documentation
+
+- Library & usage updates ([19cd213](https://github.com/stacksjs/clarity/commit/19cd213))
+- Document Log Rotation and Encryption ([358e008](https://github.com/stacksjs/clarity/commit/358e008))
+
+### 🏡 Chore
+
+- Add more placeholder tests ([78f7f28](https://github.com/stacksjs/clarity/commit/78f7f28))
+- Add tests ([05eef2c](https://github.com/stacksjs/clarity/commit/05eef2c))
+- Adjust wording ([7f29f08](https://github.com/stacksjs/clarity/commit/7f29f08))
+- Add github funding info ([0ddd1d6](https://github.com/stacksjs/clarity/commit/0ddd1d6))
+- Wip ([72b314f](https://github.com/stacksjs/clarity/commit/72b314f))
+- Enhance funding ([6cf4b74](https://github.com/stacksjs/clarity/commit/6cf4b74))
+- Update readme ([d9e7c8e](https://github.com/stacksjs/clarity/commit/d9e7c8e))
+- Re-export logger ([fab55d9](https://github.com/stacksjs/clarity/commit/fab55d9))
+- Several updates ([bf4fc4a](https://github.com/stacksjs/clarity/commit/bf4fc4a))
+- Improve postcardware and fix lint ([aa55f38](https://github.com/stacksjs/clarity/commit/aa55f38))
+- Add cursor rules ([f213520](https://github.com/stacksjs/clarity/commit/f213520))
+- Cursor rule updates ([d8bdc8c](https://github.com/stacksjs/clarity/commit/d8bdc8c))
+- Add stacks docs ([f6e82e8](https://github.com/stacksjs/clarity/commit/f6e82e8))
+- Minor updates ([0352b77](https://github.com/stacksjs/clarity/commit/0352b77))
+- Update bun ([fb1c5a7](https://github.com/stacksjs/clarity/commit/fb1c5a7))
+- Improve test suite ([ef543ef](https://github.com/stacksjs/clarity/commit/ef543ef))
+- Add performance tests ([5857fae](https://github.com/stacksjs/clarity/commit/5857fae))
+- Add integration tests ([ba8a7f4](https://github.com/stacksjs/clarity/commit/ba8a7f4))
+- Several minor updates ([bc87ece](https://github.com/stacksjs/clarity/commit/bc87ece))
+- Improve integration tests ([0095d20](https://github.com/stacksjs/clarity/commit/0095d20))
+- Improve server tests ([a0d1064](https://github.com/stacksjs/clarity/commit/a0d1064))
+- Improve performance tests ([8c5e086](https://github.com/stacksjs/clarity/commit/8c5e086))
+- Add browser tests ([5936631](https://github.com/stacksjs/clarity/commit/5936631))
+- Improve `pretty` formatter ([b08677c](https://github.com/stacksjs/clarity/commit/b08677c))
+- Add formatter tests ([7486963](https://github.com/stacksjs/clarity/commit/7486963))
+- Several formatter improvements ([d95e3a5](https://github.com/stacksjs/clarity/commit/d95e3a5))
+- Add positional tests ([3379606](https://github.com/stacksjs/clarity/commit/3379606))
+- Adjust dates ([099cb8f](https://github.com/stacksjs/clarity/commit/099cb8f))
+- Wip ([ceef101](https://github.com/stacksjs/clarity/commit/ceef101))
+- Wip ([fc3bac1](https://github.com/stacksjs/clarity/commit/fc3bac1))
+- Adjust loadConfig ([a11bbc0](https://github.com/stacksjs/clarity/commit/a11bbc0))
+- Lint ([9b1cd96](https://github.com/stacksjs/clarity/commit/9b1cd96))
+- Improve docs ([50e1c49](https://github.com/stacksjs/clarity/commit/50e1c49))
+- Add test file ([81d42c6](https://github.com/stacksjs/clarity/commit/81d42c6))
+- Wip ([09a4851](https://github.com/stacksjs/clarity/commit/09a4851))
+- Wip ([18a37e7](https://github.com/stacksjs/clarity/commit/18a37e7))
+- Add stargazers ([cf4dd7f](https://github.com/stacksjs/clarity/commit/cf4dd7f))
+- Wip ([914d1f4](https://github.com/stacksjs/clarity/commit/914d1f4))
+- Wip ([e9976a9](https://github.com/stacksjs/clarity/commit/e9976a9))
+- Wip ([b1ed886](https://github.com/stacksjs/clarity/commit/b1ed886))
+- Wip ([2112255](https://github.com/stacksjs/clarity/commit/2112255))
+- Wip ([61d500f](https://github.com/stacksjs/clarity/commit/61d500f))
+- Lint ([2c8f4ae](https://github.com/stacksjs/clarity/commit/2c8f4ae))
+
+### ❤️ Contributors
+
+- Chris ([@chrisbbreuer](https://github.com/chrisbbreuer))
+- Cab-mikee ([@cab-mikee](https://github.com/cab-mikee))
+
 ## v0.1.0...main
 
 [compare changes](https://github.com/stacksjs/clarity/compare/v0.1.0...main)
