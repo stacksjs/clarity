@@ -1,3 +1,15 @@
+## v0.3.1...main
+
+[compare changes](https://github.com/stacksjs/clarity/compare/v0.3.1...main)
+
+### 🏡 Chore
+
+- Improve logger save path ([ca5d7f7](https://github.com/stacksjs/clarity/commit/ca5d7f7))
+
+### ❤️ Contributors
+
+- Cab-mikee ([@cab-mikee](https://github.com/cab-mikee))
+
 ## v0.3.0...main
 
 [compare changes](https://github.com/stacksjs/clarity/compare/v0.3.0...main)
