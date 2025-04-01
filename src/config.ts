@@ -1,15 +1,25 @@
 import type { ClarityConfig } from './types'
-import { join } from 'node:path'
+import { join, relative, resolve } from 'node:path'
 import process from 'node:process'
 import { loadConfig as bunfigLoadConfig } from 'bunfig'
 
 // Get project root directory (where the package.json is located)
-function getProjectRoot(): string {
-  return process.cwd()
+function getProjectRoot(filePath?: string, options: { relative?: boolean } = {}): string {
+  let path = process.cwd()
+
+  while (path.includes('storage')) path = resolve(path, '..')
+
+  const finalPath = resolve(path, filePath || '')
+
+  // If the `relative` option is true, return the path relative to the current working directory
+  if (options?.relative)
+    return relative(process.cwd(), finalPath)
+
+  return finalPath
 }
 
 // Default log directory is in project root
-const defaultLogDirectory = process.env.CLARITY_LOG_DIR || join(getProjectRoot(), 'logs')
+const defaultLogDirectory = process.env.CLARITY_LOG_DIR || join(getProjectRoot(), 'storage/logs')
 
 export const defaultConfig: ClarityConfig = {
   level: 'info',

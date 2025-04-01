@@ -3,7 +3,7 @@ import type { ClarityConfig, EncryptionConfig, Formatter, LogEntry, LoggerOption
 import { Buffer } from 'node:buffer'
 import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto'
 import { closeSync, createReadStream, createWriteStream, existsSync, fsyncSync, openSync, writeFileSync } from 'node:fs'
-import { mkdir, readdir, rename, stat, unlink, writeFile } from 'node:fs/promises'
+import { access, constants, mkdir, readdir, rename, stat, unlink, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { pipeline } from 'node:stream/promises'
 import { createGzip } from 'node:zlib'
@@ -88,6 +88,12 @@ export class Logger {
       this.config.logDirectory = defaultConfig.logDirectory
     }
 
+    // Ensure storage/logs folder structure exists
+    if (!isBrowserProcess()) {
+      mkdir(this.config.logDirectory, { recursive: true, mode: 0o755 })
+        .catch(err => console.error('Failed to create log directory:', err))
+    }
+
     this.currentLogFile = this.generateLogFilename()
 
     this.encryptionKeys = new Map()
@@ -166,9 +172,16 @@ export class Logger {
     const operationPromise = (async () => {
       let fd: number | undefined
       try {
-        // Ensure log directory exists
+        // Ensure storage/logs folder structure exists
         try {
-          await mkdir(this.config.logDirectory, { recursive: true, mode: 0o755 })
+          // First check if directory exists to avoid unnecessary mkdir calls
+          try {
+            await access(this.config.logDirectory, constants.F_OK | constants.W_OK)
+          }
+          catch {
+            // If directory doesn't exist or isn't writable, create it
+            await mkdir(this.config.logDirectory, { recursive: true, mode: 0o755 })
+          }
         }
         catch (err) {
           console.error('Debug: [writeToFile] Failed to create log directory:', err)
