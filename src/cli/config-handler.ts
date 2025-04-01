@@ -2,6 +2,7 @@ import type { ConfigOptions } from './types'
 import { readFile, writeFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
+import process from 'node:process'
 import { Logger } from '../index'
 import { configManager } from '../storage/config-manager'
 

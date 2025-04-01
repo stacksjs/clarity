@@ -83,6 +83,7 @@ export class FSHelper {
             try {
               // Try to decode as base64 first
               const encryptedBuffer = Buffer.from(line, 'base64')
+              // eslint-disable-next-line no-console
               console.log('Encrypted buffer: ', encryptedBuffer)
               processedLine = await this.logger.decrypt(encryptedBuffer)
             }
