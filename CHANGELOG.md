@@ -1,3 +1,15 @@
+## v0.3.0...main
+
+[compare changes](https://github.com/stacksjs/clarity/compare/v0.3.0...main)
+
+### 🏡 Chore
+
+- Minify binaries ([f928e93](https://github.com/stacksjs/clarity/commit/f928e93))
+
+### ❤️ Contributors
+
+- Chris ([@chrisbbreuer](https://github.com/chrisbbreuer))
+
 ## v0.2.0...main
 
 [compare changes](https://github.com/stacksjs/clarity/compare/v0.2.0...main)
