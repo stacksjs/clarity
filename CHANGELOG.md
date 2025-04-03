@@ -1,3 +1,15 @@
+## v0.3.2...main
+
+[compare changes](https://github.com/stacksjs/clarity/compare/v0.3.2...main)
+
+### 🩹 Fixes
+
+- Export issue ([cb5939d](https://github.com/stacksjs/clarity/commit/cb5939d))
+
+### ❤️ Contributors
+
+- Cab-mikee ([@cab-mikee](https://github.com/cab-mikee))
+
 ## v0.3.1...main
 
 [compare changes](https://github.com/stacksjs/clarity/compare/v0.3.1...main)
