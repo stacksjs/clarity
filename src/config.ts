@@ -19,7 +19,7 @@ function getProjectRoot(filePath?: string, options: { relative?: boolean } = {})
 }
 
 // Default log directory is in project root
-const defaultLogDirectory = process.env.CLARITY_LOG_DIR || join(getProjectRoot(), 'storage/logs')
+const defaultLogDirectory = process.env.CLARITY_LOG_DIR || join(getProjectRoot(), 'logs')
 
 export const defaultConfig: ClarityConfig = {
   level: 'info',
@@ -29,7 +29,7 @@ export const defaultConfig: ClarityConfig = {
   format: 'text',
   maxLogSize: 10 * 1024 * 1024,
   logDatePattern: 'YYYY-MM-DD',
-  logDirectory: defaultLogDirectory,
+  logDirectory: defaultLogDirectory, // logs folder in project root
   rotation: {
     frequency: 'daily',
     maxSize: 10 * 1024 * 1024,

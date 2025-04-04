@@ -1338,4 +1338,6 @@ export class Logger {
     await this.writeToFile(logEntry)
   }
 }
+
+export const logger: Logger = new Logger('stacks')
 export default Logger

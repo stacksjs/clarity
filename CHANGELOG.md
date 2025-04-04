@@ -1,3 +1,15 @@
+## v0.3.4...main
+
+[compare changes](https://github.com/stacksjs/clarity/compare/v0.3.4...main)
+
+### 🏡 Chore
+
+- Remove consola ([e9d2b95](https://github.com/stacksjs/clarity/commit/e9d2b95))
+
+### ❤️ Contributors
+
+- Cab-mikee ([@cab-mikee](https://github.com/cab-mikee))
+
 ## v0.3.3...main
 
 [compare changes](https://github.com/stacksjs/clarity/compare/v0.3.3...main)

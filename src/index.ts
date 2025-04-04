@@ -1,5 +1,5 @@
 export * from './config'
 export * from './format'
-export { Logger } from './logger'
+export { Logger, logger } from './logger'
 export * from './types'
 export * from './utils'
