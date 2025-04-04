@@ -1,8 +1,6 @@
-import type { Logger as LoggerType, RotationConfig } from '@stacksjs/clarity'
+import type { Logger as LoggerType } from '@stacksjs/clarity'
 import { afterEach, beforeEach, describe, expect, it } from 'bun:test'
-import { Buffer } from 'node:buffer'
-import { createReadStream } from 'node:fs'
-import { mkdir, readdir, rm, stat, writeFile } from 'node:fs/promises'
+import { mkdir, rm, stat } from 'node:fs/promises'
 import { join } from 'node:path'
 import { Logger } from '@stacksjs/clarity'
 

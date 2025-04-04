@@ -48,5 +48,6 @@ export function colorize(text: string, color: string): string {
  * Remove ANSI color codes from text
  */
 export function stripColors(text: string): string {
+  // eslint-disable-next-line no-control-regex
   return text.replace(/\x1B\[\d+m/g, '')
 }

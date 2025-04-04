@@ -1,3 +1,15 @@
+## v0.3.3...main
+
+[compare changes](https://github.com/stacksjs/clarity/compare/v0.3.3...main)
+
+### 🏡 Chore
+
+- Add consola ([f5b4d68](https://github.com/stacksjs/clarity/commit/f5b4d68))
+
+### ❤️ Contributors
+
+- Cab-mikee ([@cab-mikee](https://github.com/cab-mikee))
+
 ## v0.3.2...main
 
 [compare changes](https://github.com/stacksjs/clarity/compare/v0.3.2...main)
