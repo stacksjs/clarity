@@ -1,14 +1,12 @@
-import type { consola } from 'consola'
-
 import type { ClarityConfig, EncryptionConfig, Formatter, LogEntry, LoggerOptions, LogLevel, RotationConfig } from './types'
 import { Buffer } from 'node:buffer'
 import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto'
 import { closeSync, createReadStream, createWriteStream, existsSync, fsyncSync, openSync, writeFileSync } from 'node:fs'
 import { access, constants, mkdir, readdir, rename, stat, unlink, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
+import process from 'node:process'
 import { pipeline } from 'node:stream/promises'
 import { createGzip } from 'node:zlib'
-import { createConsola } from 'consola'
 
 import { config as defaultConfig } from './config'
 import { JsonFormatter } from './formatters/json'
@@ -16,6 +14,37 @@ import { isBrowserProcess } from './utils'
 
 // Define missing types
 type BunTimer = ReturnType<typeof setTimeout>
+
+// Add terminal styling utilities
+const terminalStyles = {
+  // Text colors
+  red: (text: string) => `\x1B[31m${text}\x1B[0m`,
+  green: (text: string) => `\x1B[32m${text}\x1B[0m`,
+  yellow: (text: string) => `\x1B[33m${text}\x1B[0m`,
+  blue: (text: string) => `\x1B[34m${text}\x1B[0m`,
+  magenta: (text: string) => `\x1B[35m${text}\x1B[0m`,
+  cyan: (text: string) => `\x1B[36m${text}\x1B[0m`,
+  white: (text: string) => `\x1B[37m${text}\x1B[0m`,
+  gray: (text: string) => `\x1B[90m${text}\x1B[0m`,
+
+  // Text styles
+  bold: (text: string) => `\x1B[1m${text}\x1B[0m`,
+  dim: (text: string) => `\x1B[2m${text}\x1B[0m`,
+  italic: (text: string) => `\x1B[3m${text}\x1B[0m`,
+  underline: (text: string) => `\x1B[4m${text}\x1B[0m`,
+
+  // Reset
+  reset: '\x1B[0m',
+}
+
+// Log level icons/badges similar to consola
+const levelIcons = {
+  debug: terminalStyles.gray('🔍'),
+  info: terminalStyles.blue('ℹ'),
+  success: terminalStyles.green('✓'),
+  warning: terminalStyles.yellow('⚠'),
+  error: terminalStyles.red('✗'),
+}
 
 interface FingersCrossedConfig {
   activationLevel: LogLevel
@@ -31,12 +60,19 @@ const defaultFingersCrossedConfig: FingersCrossedConfig = {
   stopBuffering: false,
 }
 
-// Update LoggerOptions to include formatter
+interface TagFormat {
+  prefix?: string
+  suffix?: string
+}
+
 interface ExtendedLoggerOptions extends LoggerOptions {
   formatter?: Formatter
   fingersCrossedEnabled?: boolean
   fingersCrossed?: Partial<FingersCrossedConfig>
   enabled?: boolean
+  fancy?: boolean // Enable/disable fancy terminal output
+  showTags?: boolean // Enable/disable tags in console output
+  tagFormat?: TagFormat // Custom format for tags
 }
 
 export class Logger {
@@ -60,7 +96,8 @@ export class Logger {
   private isActivated: boolean = false
   private pendingOperations: Promise<any>[] = [] // Track pending operations
   private enabled: boolean
-  private consolaInstance: typeof consola
+  private fancy: boolean // Whether to use fancy terminal output
+  private tagFormat: TagFormat
 
   constructor(name: string, options: Partial<ExtendedLoggerOptions> = {}) {
     this.name = name
@@ -68,19 +105,8 @@ export class Logger {
     this.options = this.normalizeOptions(options)
     this.formatter = this.options.formatter || new JsonFormatter()
     this.enabled = options.enabled ?? true
-
-    // Initialize consola instance with custom configuration
-    this.consolaInstance = createConsola({
-      level: this.getLevelForConsola(this.config.level),
-      formatOptions: {
-        date: true,
-        colors: true,
-        compact: false,
-      },
-    })
-
-    // Create a tagged instance for this logger
-    this.consolaInstance = this.consolaInstance.withTag(this.name)
+    this.fancy = options.fancy ?? true // Enable fancy output by default
+    this.tagFormat = options.tagFormat ?? { prefix: '[', suffix: ']' } // Default square bracket format
 
     // Initialize fingers-crossed config based on flag
     this.fingersCrossedConfig = this.initializeFingersCrossedConfig(options)
@@ -161,6 +187,7 @@ export class Logger {
       timestamp: undefined,
       fingersCrossed: {},
       enabled: true,
+      showTags: false,
       formatter: undefined,
     }
 
@@ -750,20 +777,37 @@ export class Logger {
     return this.currentLogFile
   }
 
-  private async log(level: LogLevel, message: string, ...args: any[]): Promise<void> {
+  private formatTag(name: string): string {
+    if (!name)
+      return ''
+    return `${this.tagFormat.prefix}${name}${this.tagFormat.suffix}`
+  }
+
+  private async log(level: LogLevel, message: string | Error, ...args: any[]): Promise<void> {
     if (!this.shouldLog(level))
       return
 
     const timestamp = new Date()
     const formattedDate = timestamp.toISOString()
 
-    // Format the message with format strings
-    let formattedMessage = message
+    // Handle Error objects specially
+    let formattedMessage: string
+    let errorStack: string | undefined
+
+    if (message instanceof Error) {
+      formattedMessage = message.message
+      errorStack = message.stack
+    }
+    else {
+      formattedMessage = message
+    }
+
+    // Format the message with format strings if there are args
     if (args && args.length > 0) {
       // Handle format strings
       const formatRegex = /%([sdijfo%])/g
       let argIndex = 0
-      formattedMessage = message.replace(formatRegex, (match, type) => {
+      formattedMessage = formattedMessage.replace(formatRegex, (match, type) => {
         if (type === '%')
           return '%'
         if (argIndex >= args.length)
@@ -791,27 +835,54 @@ export class Logger {
       }
     }
 
-    // Use consola for terminal output with fancy formatting
-    switch (level) {
-      case 'debug':
-        this.consolaInstance.debug(formattedMessage)
-        break
-      case 'info':
-        this.consolaInstance.info(formattedMessage)
-        break
-      case 'success':
-        this.consolaInstance.success(formattedMessage)
-        break
-      case 'warning':
-        this.consolaInstance.warn(formattedMessage)
-        break
-      case 'error':
-        this.consolaInstance.error(formattedMessage)
-        break
+    // Format console output (similar to consola)
+    if (this.fancy && !isBrowserProcess()) {
+      const icon = levelIcons[level]
+      // Make tag optional based on showTags property and use custom format
+      const tag = this.options.showTags !== false && this.name ? terminalStyles.gray(this.formatTag(this.name)) : ''
+
+      // Format the console output based on log level
+      let consoleMessage: string
+      switch (level) {
+        case 'debug':
+          consoleMessage = `${icon} ${tag} ${terminalStyles.gray(formattedMessage)}`
+          console.error(consoleMessage)
+          break
+        case 'info':
+          consoleMessage = `${icon} ${tag} ${formattedMessage}`
+          console.error(consoleMessage)
+          break
+        case 'success':
+          consoleMessage = `${icon} ${tag} ${terminalStyles.green(formattedMessage)}`
+          console.error(consoleMessage)
+          break
+        case 'warning':
+          consoleMessage = `${icon} ${tag} ${terminalStyles.yellow(formattedMessage)}`
+          console.warn(consoleMessage)
+          break
+        case 'error':
+          consoleMessage = `${icon} ${tag} ${terminalStyles.red(formattedMessage)}`
+          console.error(consoleMessage)
+          // If there's a stack trace, print it in gray
+          if (errorStack) {
+            console.error(terminalStyles.gray(errorStack))
+          }
+          break
+      }
+    }
+    else if (!isBrowserProcess()) {
+      // Simple console output without styling
+      console.error(`[${formattedDate}] ${level.toUpperCase()}: ${formattedMessage}`)
+      if (errorStack) {
+        console.error(errorStack)
+      }
     }
 
     // Create the log entry for file logging
-    const logEntry = `[${formattedDate}] local.${level.toUpperCase()}: ${formattedMessage}\n`
+    let logEntry = `[${formattedDate}] local.${level.toUpperCase()}: ${formattedMessage}\n`
+    if (errorStack) {
+      logEntry += `${errorStack}\n`
+    }
 
     // Check if log directory exists, if not create it
     if (!existsSync(this.config.logDirectory)) {
@@ -835,20 +906,46 @@ export class Logger {
    */
   time(label: string): (metadata?: Record<string, any>) => Promise<void> {
     const start = performance.now()
-    this.consolaInstance.start(label) // Show start message with spinner
+
+    // Show start message with spinner-like indicator
+    if (this.fancy && !isBrowserProcess()) {
+      // Make tag optional based on showTags property and use custom format
+      const tag = this.options.showTags !== false && this.name ? terminalStyles.gray(this.formatTag(this.name)) : ''
+      console.error(`${terminalStyles.blue('◷')} ${tag} ${terminalStyles.cyan(label)} started`)
+    }
 
     return async (metadata?: Record<string, any>) => {
+      if (!this.enabled)
+        return
+
       const end = performance.now()
       const elapsed = Math.round(end - start)
 
+      // Format the completion message
+      const completionMessage = `${label} completed in ${elapsed}ms`
+
+      // Format the log entry with metadata if present
+      const timestamp = new Date()
+      const formattedDate = timestamp.toISOString()
+      let logEntry = `[${formattedDate}] local.INFO: ${completionMessage}`
       if (metadata) {
-        await this.info(`${label} completed in ${elapsed}ms`, metadata)
-        this.consolaInstance.success(`${label} completed in ${elapsed}ms`, metadata)
+        logEntry += ` ${JSON.stringify(metadata)}`
       }
-      else {
-        await this.info(`${label} completed in ${elapsed}ms`)
-        this.consolaInstance.success(`${label} completed in ${elapsed}ms`)
+      logEntry += '\n'
+
+      // Show completion message with tag based on showTags option
+      if (this.fancy && !isBrowserProcess()) {
+        const tag = this.options.showTags !== false && this.name ? terminalStyles.gray(this.formatTag(this.name)) : ''
+        const icon = terminalStyles.green('✓')
+        console.error(`${icon} ${tag} ${completionMessage}${metadata ? ` ${JSON.stringify(metadata)}` : ''}`)
       }
+      else if (!isBrowserProcess()) {
+        // Simple console output without styling
+        console.error(logEntry.trim())
+      }
+
+      // Write directly to file instead of using this.info()
+      await this.writeToFile(logEntry)
     }
   }
 
@@ -868,7 +965,7 @@ export class Logger {
     await this.log('warning', message, ...args)
   }
 
-  async error(message: string, ...args: any[]): Promise<void> {
+  async error(message: string | Error, ...args: any[]): Promise<void> {
     await this.log('error', message, ...args)
   }
 
@@ -1062,36 +1159,183 @@ export class Logger {
     return this.config
   }
 
-  // Add helper method to convert our log levels to consola levels
-  private getLevelForConsola(level: LogLevel): number {
-    const levelMap: Record<LogLevel, number> = {
-      debug: 4, // Debug level in consola
-      info: 3, // Info level in consola
-      success: 3, // Success is same as info in consola
-      warning: 2, // Warning level in consola
-      error: 1, // Error level in consola
-    }
-    return levelMap[level] || 3
-  }
-
-  // Add new method for boxed messages
+  /**
+   * Create a boxed message in the console
+   * @param message The message to display in the box
+   */
   async box(message: string): Promise<void> {
-    this.consolaInstance.box(message)
-    await this.info(`[BOX] ${message}`)
+    if (!this.enabled)
+      return
+
+    const timestamp = new Date()
+    const formattedDate = timestamp.toISOString()
+    const logEntry = `[${formattedDate}] local.INFO: [BOX] ${message}\n`
+
+    if (this.fancy && !isBrowserProcess()) {
+      const lines = message.split('\n')
+      const width = Math.max(...lines.map(line => line.length)) + 2
+
+      const top = `┌${'─'.repeat(width)}┐`
+      const bottom = `└${'─'.repeat(width)}┘`
+
+      const boxedLines = lines.map((line) => {
+        const padding = ' '.repeat(width - line.length - 2)
+        return `│ ${line}${padding} │`
+      })
+
+      // Add tag before the box if showTags is enabled with custom format
+      if (this.options.showTags !== false && this.name) {
+        console.error(terminalStyles.gray(this.formatTag(this.name)))
+      }
+
+      console.error(terminalStyles.cyan(top))
+      boxedLines.forEach(line => console.error(terminalStyles.cyan(line)))
+      console.error(terminalStyles.cyan(bottom))
+    }
+    else if (!isBrowserProcess()) {
+      // Simple console output without styling
+      console.error(`[${formattedDate}] BOX: ${message}`)
+    }
+
+    // Write directly to file instead of using this.info()
+    await this.writeToFile(logEntry)
   }
 
-  // Add new method for interactive prompts
-  async prompt(message: string, options: { type: 'confirm' } = { type: 'confirm' }): Promise<boolean> {
-    return this.consolaInstance.prompt(message, options)
+  /**
+   * Display a confirmation prompt
+   * @param message The message to display
+   * @returns Promise resolving to the user's response
+   */
+  async prompt(message: string): Promise<boolean> {
+    if (isBrowserProcess()) {
+      // We can't use window.confirm with our linter rules
+      // Fallback to just returning true
+      return Promise.resolve(true)
+    }
+
+    return new Promise((resolve) => {
+      // Use console.error for display
+      console.error(`${terminalStyles.cyan('?')} ${message} (y/n) `)
+
+      const onData = (data: Buffer) => {
+        const input = data.toString().trim().toLowerCase()
+        process.stdin.removeListener('data', onData)
+        try {
+          // Check if setRawMode is available (not available in all environments)
+          if (typeof process.stdin.setRawMode === 'function') {
+            process.stdin.setRawMode(false)
+          }
+        }
+        catch {
+          // Ignore errors with setRawMode
+        }
+        process.stdin.pause()
+
+        console.error('') // Add a newline
+        resolve(input === 'y' || input === 'yes')
+      }
+
+      try {
+        // Check if setRawMode is available
+        if (typeof process.stdin.setRawMode === 'function') {
+          process.stdin.setRawMode(true)
+        }
+      }
+      catch {
+        // Ignore errors with setRawMode
+      }
+      process.stdin.resume()
+      process.stdin.once('data', onData)
+    })
   }
 
-  // Update pause/resume methods to just handle enabled state
+  /**
+   * Enable or disable fancy terminal output
+   * @param enabled Whether to enable fancy output
+   */
+  setFancy(enabled: boolean): void {
+    this.fancy = enabled
+  }
+
+  /**
+   * Check if fancy terminal output is enabled
+   * @returns boolean indicating if fancy output is enabled
+   */
+  isFancy(): boolean {
+    return this.fancy
+  }
+
+  /**
+   * Pause logging (disable it temporarily)
+   */
   pause(): void {
     this.enabled = false
   }
 
+  /**
+   * Resume logging after pausing
+   */
   resume(): void {
     this.enabled = true
+  }
+
+  /**
+   * Log a starting task with a spinner-like indicator
+   * @param message The message for the starting task
+   * @param args Optional arguments for formatting
+   */
+  async start(message: string, ...args: any[]): Promise<void> {
+    if (!this.enabled)
+      return
+
+    // Format arguments if provided
+    let formattedMessage = message
+    if (args && args.length > 0) {
+      // Format string if needed (reusing similar code from log method)
+      const formatRegex = /%([sdijfo%])/g
+      let argIndex = 0
+      formattedMessage = message.replace(formatRegex, (match, type) => {
+        if (type === '%')
+          return '%'
+        if (argIndex >= args.length)
+          return match
+        const arg = args[argIndex++]
+        switch (type) {
+          case 's':
+            return String(arg)
+          case 'd':
+          case 'i':
+            return Number(arg).toString()
+          case 'j':
+          case 'o':
+            return JSON.stringify(arg, null, 2)
+          default:
+            return match
+        }
+      })
+
+      // Append any remaining args
+      if (argIndex < args.length) {
+        formattedMessage += ` ${args.slice(argIndex).map(arg =>
+          typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg),
+        ).join(' ')}`
+      }
+    }
+
+    // Console output with fancy formatting
+    if (this.fancy && !isBrowserProcess()) {
+      // Make tag optional based on showTags property and use custom format
+      const tag = this.options.showTags !== false && this.name ? terminalStyles.gray(this.formatTag(this.name)) : ''
+      const spinnerChar = terminalStyles.blue('◐')
+      console.error(`${spinnerChar} ${tag} ${terminalStyles.cyan(formattedMessage)}`)
+    }
+
+    // Log to file directly instead of using this.info()
+    const timestamp = new Date()
+    const formattedDate = timestamp.toISOString()
+    const logEntry = `[${formattedDate}] local.INFO: [START] ${formattedMessage}\n`
+
+    await this.writeToFile(logEntry)
   }
 }
 export default Logger
