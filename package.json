@@ -71,6 +71,9 @@
     "preview:docs": "bun --bun vitepress preview docs",
     "typecheck": "bun --bun tsc --noEmit"
   },
+  "dependencies": {
+    "consola": "^3.4.2"
+  },
   "devDependencies": {
     "@happy-dom/global-registrator": "^17.4.4",
     "@stacksjs/docs": "^0.70.22",

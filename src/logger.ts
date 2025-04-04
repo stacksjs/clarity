@@ -1,5 +1,6 @@
-import type { ClarityConfig, EncryptionConfig, Formatter, LogEntry, LoggerOptions, LogLevel, RotationConfig } from './types'
+import type { consola } from 'consola'
 
+import type { ClarityConfig, EncryptionConfig, Formatter, LogEntry, LoggerOptions, LogLevel, RotationConfig } from './types'
 import { Buffer } from 'node:buffer'
 import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto'
 import { closeSync, createReadStream, createWriteStream, existsSync, fsyncSync, openSync, writeFileSync } from 'node:fs'
@@ -7,6 +8,7 @@ import { access, constants, mkdir, readdir, rename, stat, unlink, writeFile } fr
 import { join } from 'node:path'
 import { pipeline } from 'node:stream/promises'
 import { createGzip } from 'node:zlib'
+import { createConsola } from 'consola'
 
 import { config as defaultConfig } from './config'
 import { JsonFormatter } from './formatters/json'
@@ -58,6 +60,7 @@ export class Logger {
   private isActivated: boolean = false
   private pendingOperations: Promise<any>[] = [] // Track pending operations
   private enabled: boolean
+  private consolaInstance: typeof consola
 
   constructor(name: string, options: Partial<ExtendedLoggerOptions> = {}) {
     this.name = name
@@ -65,6 +68,19 @@ export class Logger {
     this.options = this.normalizeOptions(options)
     this.formatter = this.options.formatter || new JsonFormatter()
     this.enabled = options.enabled ?? true
+
+    // Initialize consola instance with custom configuration
+    this.consolaInstance = createConsola({
+      level: this.getLevelForConsola(this.config.level),
+      formatOptions: {
+        date: true,
+        colors: true,
+        compact: false,
+      },
+    })
+
+    // Create a tagged instance for this logger
+    this.consolaInstance = this.consolaInstance.withTag(this.name)
 
     // Initialize fingers-crossed config based on flag
     this.fingersCrossedConfig = this.initializeFingersCrossedConfig(options)
@@ -775,7 +791,26 @@ export class Logger {
       }
     }
 
-    // Create the log entry in the desired format
+    // Use consola for terminal output with fancy formatting
+    switch (level) {
+      case 'debug':
+        this.consolaInstance.debug(formattedMessage)
+        break
+      case 'info':
+        this.consolaInstance.info(formattedMessage)
+        break
+      case 'success':
+        this.consolaInstance.success(formattedMessage)
+        break
+      case 'warning':
+        this.consolaInstance.warn(formattedMessage)
+        break
+      case 'error':
+        this.consolaInstance.error(formattedMessage)
+        break
+    }
+
+    // Create the log entry for file logging
     const logEntry = `[${formattedDate}] local.${level.toUpperCase()}: ${formattedMessage}\n`
 
     // Check if log directory exists, if not create it
@@ -789,7 +824,7 @@ export class Logger {
       await writeFile(this.currentLogFile, '', { mode: 0o644 })
     }
 
-    // Write directly to file
+    // Write to file
     await this.writeToFile(logEntry)
   }
 
@@ -800,6 +835,7 @@ export class Logger {
    */
   time(label: string): (metadata?: Record<string, any>) => Promise<void> {
     const start = performance.now()
+    this.consolaInstance.start(label) // Show start message with spinner
 
     return async (metadata?: Record<string, any>) => {
       const end = performance.now()
@@ -807,9 +843,11 @@ export class Logger {
 
       if (metadata) {
         await this.info(`${label} completed in ${elapsed}ms`, metadata)
+        this.consolaInstance.success(`${label} completed in ${elapsed}ms`, metadata)
       }
       else {
         await this.info(`${label} completed in ${elapsed}ms`)
+        this.consolaInstance.success(`${label} completed in ${elapsed}ms`)
       }
     }
   }
@@ -1022,6 +1060,38 @@ export class Logger {
 
   getConfig(): ClarityConfig {
     return this.config
+  }
+
+  // Add helper method to convert our log levels to consola levels
+  private getLevelForConsola(level: LogLevel): number {
+    const levelMap: Record<LogLevel, number> = {
+      debug: 4, // Debug level in consola
+      info: 3, // Info level in consola
+      success: 3, // Success is same as info in consola
+      warning: 2, // Warning level in consola
+      error: 1, // Error level in consola
+    }
+    return levelMap[level] || 3
+  }
+
+  // Add new method for boxed messages
+  async box(message: string): Promise<void> {
+    this.consolaInstance.box(message)
+    await this.info(`[BOX] ${message}`)
+  }
+
+  // Add new method for interactive prompts
+  async prompt(message: string, options: { type: 'confirm' } = { type: 'confirm' }): Promise<boolean> {
+    return this.consolaInstance.prompt(message, options)
+  }
+
+  // Update pause/resume methods to just handle enabled state
+  pause(): void {
+    this.enabled = false
+  }
+
+  resume(): void {
+    this.enabled = true
   }
 }
 export default Logger
