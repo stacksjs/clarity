@@ -1,3 +1,15 @@
+## v0.3.5...main
+
+[compare changes](https://github.com/stacksjs/clarity/compare/v0.3.5...main)
+
+### 🏡 Chore
+
+- Wip ([b27279b](https://github.com/stacksjs/clarity/commit/b27279b))
+
+### ❤️ Contributors
+
+- Cab-mikee ([@cab-mikee](https://github.com/cab-mikee))
+
 ## v0.3.4...main
 
 [compare changes](https://github.com/stacksjs/clarity/compare/v0.3.4...main)
