@@ -39,11 +39,11 @@ const terminalStyles = {
 
 // Log level icons/badges similar to consola
 const levelIcons = {
-  debug: terminalStyles.gray('🔍'),
-  info: terminalStyles.blue('ℹ'),
-  success: terminalStyles.green('✓'),
-  warning: terminalStyles.yellow('⚠'),
-  error: terminalStyles.red('✗'),
+  debug: '🔍',
+  info: 'ℹ',
+  success: '✓',
+  warning: terminalStyles.yellow('WARN'), // Use badge style for warnings
+  error: terminalStyles.red('ERROR'), // Use badge style for errors
 }
 
 interface FingersCrossedConfig {
@@ -73,6 +73,7 @@ interface ExtendedLoggerOptions extends LoggerOptions {
   fancy?: boolean // Enable/disable fancy terminal output
   showTags?: boolean // Enable/disable tags in console output
   tagFormat?: TagFormat // Custom format for tags
+  timestampPosition?: 'left' | 'right' // Control timestamp position in console output
 }
 
 export class Logger {
@@ -98,6 +99,7 @@ export class Logger {
   private enabled: boolean
   private fancy: boolean // Whether to use fancy terminal output
   private tagFormat: TagFormat
+  private timestampPosition: 'left' | 'right'
 
   constructor(name: string, options: Partial<ExtendedLoggerOptions> = {}) {
     this.name = name
@@ -107,6 +109,7 @@ export class Logger {
     this.enabled = options.enabled ?? true
     this.fancy = options.fancy ?? true // Enable fancy output by default
     this.tagFormat = options.tagFormat ?? { prefix: '[', suffix: ']' } // Default square bracket format
+    this.timestampPosition = options.timestampPosition ?? 'right' // Default to left position
 
     // Initialize fingers-crossed config based on flag
     this.fingersCrossedConfig = this.initializeFingersCrossedConfig(options)
@@ -783,12 +786,48 @@ export class Logger {
     return `${this.tagFormat.prefix}${name}${this.tagFormat.suffix}`
   }
 
+  private formatFileTimestamp(date: Date): string {
+    return `[${date.toISOString()}]`
+  }
+
+  private formatConsoleTimestamp(date: Date): string {
+    return terminalStyles.gray(date.toLocaleTimeString())
+  }
+
+  private formatConsoleMessage(parts: { timestamp: string, icon?: string, tag?: string, message: string, level?: LogLevel, showTimestamp?: boolean }): string {
+    const { timestamp, icon = '', tag = '', message, level, showTimestamp = true } = parts
+
+    // Get terminal width, default to 120 if not available
+    const terminalWidth = process.stdout.columns || 120
+
+    // Format the main message part
+    let mainPart = ''
+    if (level === 'warning' || level === 'error') {
+      // For warning and error, show badge-style level indicator
+      mainPart = `${icon} ${message}`
+    }
+    else {
+      // For other levels, show icon followed by message
+      mainPart = `${icon} ${tag} ${message}`
+    }
+
+    // If we don't need to show timestamp, just return the message
+    if (!showTimestamp) {
+      return mainPart.trim()
+    }
+
+    // Calculate padding needed to push timestamp to far right
+    const padding = Math.max(1, terminalWidth - mainPart.length - timestamp.length)
+    return `${mainPart.trim()}${' '.repeat(padding)}${timestamp}`
+  }
+
   private async log(level: LogLevel, message: string | Error, ...args: any[]): Promise<void> {
     if (!this.shouldLog(level))
       return
 
     const timestamp = new Date()
-    const formattedDate = timestamp.toISOString()
+    const consoleTime = this.formatConsoleTimestamp(timestamp)
+    const fileTime = this.formatFileTimestamp(timestamp)
 
     // Handle Error objects specially
     let formattedMessage: string
@@ -835,64 +874,92 @@ export class Logger {
       }
     }
 
-    // Format console output (similar to consola)
+    // Format console output
     if (this.fancy && !isBrowserProcess()) {
       const icon = levelIcons[level]
-      // Make tag optional based on showTags property and use custom format
       const tag = this.options.showTags !== false && this.name ? terminalStyles.gray(this.formatTag(this.name)) : ''
 
       // Format the console output based on log level
       let consoleMessage: string
       switch (level) {
         case 'debug':
-          consoleMessage = `${icon} ${tag} ${terminalStyles.gray(formattedMessage)}`
+          consoleMessage = this.formatConsoleMessage({
+            timestamp: consoleTime,
+            icon,
+            tag,
+            message: terminalStyles.gray(formattedMessage),
+            level,
+          })
           console.error(consoleMessage)
           break
         case 'info':
-          consoleMessage = `${icon} ${tag} ${formattedMessage}`
+          consoleMessage = this.formatConsoleMessage({
+            timestamp: consoleTime,
+            icon,
+            tag,
+            message: formattedMessage,
+            level,
+          })
           console.error(consoleMessage)
           break
         case 'success':
-          consoleMessage = `${icon} ${tag} ${terminalStyles.green(formattedMessage)}`
+          consoleMessage = this.formatConsoleMessage({
+            timestamp: consoleTime,
+            icon,
+            tag,
+            message: terminalStyles.green(formattedMessage),
+            level,
+          })
           console.error(consoleMessage)
           break
         case 'warning':
-          consoleMessage = `${icon} ${tag} ${terminalStyles.yellow(formattedMessage)}`
+          consoleMessage = this.formatConsoleMessage({
+            timestamp: consoleTime,
+            icon,
+            tag,
+            message: formattedMessage,
+            level,
+          })
           console.warn(consoleMessage)
           break
         case 'error':
-          consoleMessage = `${icon} ${tag} ${terminalStyles.red(formattedMessage)}`
+          consoleMessage = this.formatConsoleMessage({
+            timestamp: consoleTime,
+            icon,
+            tag,
+            message: formattedMessage,
+            level,
+          })
           console.error(consoleMessage)
-          // If there's a stack trace, print it in gray
+          // If there's a stack trace, print it indented without timestamps
           if (errorStack) {
-            console.error(terminalStyles.gray(errorStack))
+            const stackLines = errorStack.split('\n')
+            for (const line of stackLines) {
+              if (line.trim() && !line.includes(formattedMessage)) {
+                console.error(this.formatConsoleMessage({
+                  timestamp: consoleTime,
+                  message: terminalStyles.gray(`  ${line}`),
+                  level,
+                  showTimestamp: false, // Don't show timestamp for stack traces
+                }))
+              }
+            }
           }
           break
       }
     }
     else if (!isBrowserProcess()) {
       // Simple console output without styling
-      console.error(`[${formattedDate}] ${level.toUpperCase()}: ${formattedMessage}`)
+      console.error(`${fileTime} ${level.toUpperCase()}: ${formattedMessage}`)
       if (errorStack) {
         console.error(errorStack)
       }
     }
 
     // Create the log entry for file logging
-    let logEntry = `[${formattedDate}] local.${level.toUpperCase()}: ${formattedMessage}\n`
+    let logEntry = `${fileTime} local.${level.toUpperCase()}: ${formattedMessage}\n`
     if (errorStack) {
       logEntry += `${errorStack}\n`
-    }
-
-    // Check if log directory exists, if not create it
-    if (!existsSync(this.config.logDirectory)) {
-      await mkdir(this.config.logDirectory, { recursive: true, mode: 0o755 })
-    }
-
-    const fileExists = existsSync(this.currentLogFile)
-
-    if (!fileExists) {
-      await writeFile(this.currentLogFile, '', { mode: 0o644 })
     }
 
     // Write to file
@@ -909,9 +976,14 @@ export class Logger {
 
     // Show start message with spinner-like indicator
     if (this.fancy && !isBrowserProcess()) {
-      // Make tag optional based on showTags property and use custom format
       const tag = this.options.showTags !== false && this.name ? terminalStyles.gray(this.formatTag(this.name)) : ''
-      console.error(`${terminalStyles.blue('◷')} ${tag} ${terminalStyles.cyan(label)} started`)
+      const consoleTime = this.formatConsoleTimestamp(new Date())
+      console.error(this.formatConsoleMessage({
+        timestamp: consoleTime,
+        icon: terminalStyles.blue('◐'),
+        tag,
+        message: `${terminalStyles.cyan(label)}...`,
+      }))
     }
 
     return async (metadata?: Record<string, any>) => {
@@ -926,8 +998,10 @@ export class Logger {
 
       // Format the log entry with metadata if present
       const timestamp = new Date()
-      const formattedDate = timestamp.toISOString()
-      let logEntry = `[${formattedDate}] local.INFO: ${completionMessage}`
+      const consoleTime = this.formatConsoleTimestamp(timestamp)
+      const fileTime = this.formatFileTimestamp(timestamp)
+
+      let logEntry = `${fileTime} local.INFO: ${completionMessage}`
       if (metadata) {
         logEntry += ` ${JSON.stringify(metadata)}`
       }
@@ -936,8 +1010,12 @@ export class Logger {
       // Show completion message with tag based on showTags option
       if (this.fancy && !isBrowserProcess()) {
         const tag = this.options.showTags !== false && this.name ? terminalStyles.gray(this.formatTag(this.name)) : ''
-        const icon = terminalStyles.green('✓')
-        console.error(`${icon} ${tag} ${completionMessage}${metadata ? ` ${JSON.stringify(metadata)}` : ''}`)
+        console.error(this.formatConsoleMessage({
+          timestamp: consoleTime,
+          icon: terminalStyles.green('✓'),
+          tag,
+          message: `${completionMessage}${metadata ? ` ${JSON.stringify(metadata)}` : ''}`,
+        }))
       }
       else if (!isBrowserProcess()) {
         // Simple console output without styling
@@ -1168,8 +1246,8 @@ export class Logger {
       return
 
     const timestamp = new Date()
-    const formattedDate = timestamp.toISOString()
-    const logEntry = `[${formattedDate}] local.INFO: [BOX] ${message}\n`
+    const consoleTime = this.formatConsoleTimestamp(timestamp)
+    const fileTime = this.formatFileTimestamp(timestamp)
 
     if (this.fancy && !isBrowserProcess()) {
       const lines = message.split('\n')
@@ -1183,21 +1261,38 @@ export class Logger {
         return `│ ${line}${padding} │`
       })
 
-      // Add tag before the box if showTags is enabled with custom format
+      // Add tag before the box if showTags is enabled
       if (this.options.showTags !== false && this.name) {
-        console.error(terminalStyles.gray(this.formatTag(this.name)))
+        console.error(this.formatConsoleMessage({
+          timestamp: consoleTime,
+          message: terminalStyles.gray(this.formatTag(this.name)),
+          showTimestamp: false,
+        }))
       }
 
-      console.error(terminalStyles.cyan(top))
-      boxedLines.forEach(line => console.error(terminalStyles.cyan(line)))
-      console.error(terminalStyles.cyan(bottom))
+      // Show timestamp only on the first line of the box
+      console.error(this.formatConsoleMessage({
+        timestamp: consoleTime,
+        message: terminalStyles.cyan(top),
+      }))
+      boxedLines.forEach(line => console.error(this.formatConsoleMessage({
+        timestamp: consoleTime,
+        message: terminalStyles.cyan(line),
+        showTimestamp: false,
+      })))
+      console.error(this.formatConsoleMessage({
+        timestamp: consoleTime,
+        message: terminalStyles.cyan(bottom),
+        showTimestamp: false,
+      }))
     }
     else if (!isBrowserProcess()) {
       // Simple console output without styling
-      console.error(`[${formattedDate}] BOX: ${message}`)
+      console.error(`${fileTime} BOX: ${message}`)
     }
 
     // Write directly to file instead of using this.info()
+    const logEntry = `${fileTime} local.INFO: [BOX] ${message}\n`
     await this.writeToFile(logEntry)
   }
 

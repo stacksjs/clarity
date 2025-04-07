@@ -23,7 +23,7 @@ const defaultLogDirectory = process.env.CLARITY_LOG_DIR || join(getProjectRoot()
 
 export const defaultConfig: ClarityConfig = {
   level: 'info',
-  defaultName: 'app',
+  defaultName: 'clarity',
   timestamp: true,
   colors: true,
   format: 'text',
