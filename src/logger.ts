@@ -40,8 +40,8 @@ const terminalStyles = {
 // Log level icons/badges similar to consola
 const levelIcons = {
   debug: '🔍',
-  info: 'ℹ',
-  success: '✓',
+  info: terminalStyles.green('ℹ'),
+  success: terminalStyles.green('✓'),
   warning: terminalStyles.yellow('WARN'), // Use badge style for warnings
   error: terminalStyles.red('ERROR'), // Use badge style for errors
 }
@@ -100,6 +100,7 @@ export class Logger {
   private fancy: boolean // Whether to use fancy terminal output
   private tagFormat: TagFormat
   private timestampPosition: 'left' | 'right'
+  private readonly ANSI_PATTERN = /\u001B\[\d+m/g
 
   constructor(name: string, options: Partial<ExtendedLoggerOptions> = {}) {
     this.name = name
@@ -791,11 +792,28 @@ export class Logger {
   }
 
   private formatConsoleTimestamp(date: Date): string {
-    return terminalStyles.gray(date.toLocaleTimeString())
+    return this.fancy ? terminalStyles.gray(date.toLocaleTimeString()) : date.toLocaleTimeString()
   }
 
   private formatConsoleMessage(parts: { timestamp: string, icon?: string, tag?: string, message: string, level?: LogLevel, showTimestamp?: boolean }): string {
     const { timestamp, icon = '', tag = '', message, level, showTimestamp = true } = parts
+
+    // If fancy mode is disabled, return a simple format
+    if (!this.fancy) {
+      const components = []
+      if (showTimestamp)
+        components.push(timestamp)
+      if (level === 'warning')
+        components.push('WARN')
+      else if (level === 'error')
+        components.push('ERROR')
+      else if (icon)
+        components.push(icon.replace(/[^\p{L}\p{N}\p{P}\p{Z}]/gu, ''))
+      if (tag)
+        components.push(tag.replace(/[[\]]/g, ''))
+      components.push(message)
+      return components.join(' ')
+    }
 
     // Get terminal width, default to 120 if not available
     const terminalWidth = process.stdout.columns || 120
@@ -806,9 +824,13 @@ export class Logger {
       // For warning and error, show badge-style level indicator
       mainPart = `${icon} ${message}`
     }
-    else {
-      // For other levels, show icon followed by message
+    else if (level === 'info' || level === 'success') {
+      // For info and success, keep icon colored but message plain
       mainPart = `${icon} ${tag} ${message}`
+    }
+    else {
+      // For other levels, apply standard formatting
+      mainPart = `${icon} ${tag} ${terminalStyles.cyan(message)}`
     }
 
     // If we don't need to show timestamp, just return the message
@@ -819,6 +841,48 @@ export class Logger {
     // Calculate padding needed to push timestamp to far right
     const padding = Math.max(1, terminalWidth - mainPart.length - timestamp.length)
     return `${mainPart.trim()}${' '.repeat(padding)}${timestamp}`
+  }
+
+  private formatMessage(message: string, args: any[]): string {
+    // If the last argument is an array, use positional {n} formatting
+    if (args.length === 1 && Array.isArray(args[0])) {
+      return message.replace(/\{(\d+)\}/g, (match, index) => {
+        const position = Number.parseInt(index, 10)
+        return position < args[0].length ? String(args[0][position]) : match
+      })
+    }
+
+    // Otherwise use the existing %s style formatting
+    const formatRegex = /%([sdijfo%])/g
+    let argIndex = 0
+    let formattedMessage = message.replace(formatRegex, (match, type) => {
+      if (type === '%')
+        return '%'
+      if (argIndex >= args.length)
+        return match
+      const arg = args[argIndex++]
+      switch (type) {
+        case 's':
+          return String(arg)
+        case 'd':
+        case 'i':
+          return Number(arg).toString()
+        case 'j':
+        case 'o':
+          return JSON.stringify(arg, null, 2)
+        default:
+          return match
+      }
+    })
+
+    // Append any remaining args
+    if (argIndex < args.length) {
+      formattedMessage += ` ${args.slice(argIndex).map(arg =>
+        typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg),
+      ).join(' ')}`
+    }
+
+    return formattedMessage
   }
 
   private async log(level: LogLevel, message: string | Error, ...args: any[]): Promise<void> {
@@ -838,40 +902,7 @@ export class Logger {
       errorStack = message.stack
     }
     else {
-      formattedMessage = message
-    }
-
-    // Format the message with format strings if there are args
-    if (args && args.length > 0) {
-      // Handle format strings
-      const formatRegex = /%([sdijfo%])/g
-      let argIndex = 0
-      formattedMessage = formattedMessage.replace(formatRegex, (match, type) => {
-        if (type === '%')
-          return '%'
-        if (argIndex >= args.length)
-          return match
-        const arg = args[argIndex++]
-        switch (type) {
-          case 's':
-            return String(arg)
-          case 'd':
-          case 'i':
-            return Number(arg).toString()
-          case 'j':
-          case 'o':
-            return JSON.stringify(arg, null, 2)
-          default:
-            return match
-        }
-      })
-
-      // Append any remaining args
-      if (argIndex < args.length) {
-        formattedMessage += ` ${args.slice(argIndex).map(arg =>
-          typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg),
-        ).join(' ')}`
-      }
+      formattedMessage = this.formatMessage(message, args)
     }
 
     // Format console output
