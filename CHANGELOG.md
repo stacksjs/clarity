@@ -1,3 +1,17 @@
+## v0.3.6...main
+
+[compare changes](https://github.com/stacksjs/clarity/compare/v0.3.6...main)
+
+### 🏡 Chore
+
+- Added positional formatting ([ae14cba](https://github.com/stacksjs/clarity/commit/ae14cba))
+- Add progress bar ([92d2a59](https://github.com/stacksjs/clarity/commit/92d2a59))
+- Add progress bar docs ([9288943](https://github.com/stacksjs/clarity/commit/9288943))
+
+### ❤️ Contributors
+
+- Cab-mikee ([@cab-mikee](https://github.com/cab-mikee))
+
 ## v0.3.5...main
 
 [compare changes](https://github.com/stacksjs/clarity/compare/v0.3.5...main)
