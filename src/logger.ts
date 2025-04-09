@@ -101,6 +101,13 @@ export class Logger {
   private tagFormat: TagFormat
   private timestampPosition: 'left' | 'right'
   private readonly ANSI_PATTERN = /\u001B\[\d+m/g
+  private activeProgressBar: { // State for the active progress bar
+    total: number
+    current: number
+    message: string
+    barLength: number
+    lastRenderedLine: string
+  } | null = null
 
   constructor(name: string, options: Partial<ExtendedLoggerOptions> = {}) {
     this.name = name
@@ -1462,6 +1469,149 @@ export class Logger {
     const logEntry = `[${formattedDate}] local.INFO: [START] ${formattedMessage}\n`
 
     await this.writeToFile(logEntry)
+  }
+
+  /**
+   * Create and manage a dynamic progress bar in the console.
+   * Only works in Node.js environments with fancy mode enabled.
+   * @param total The total number of steps for the progress bar.
+   * @param initialMessage An optional initial message to display.
+   * @returns An object with `update`, `finish`, and `interrupt` methods to control the progress bar.
+   */
+  progress(total: number, initialMessage: string = ''): {
+    update: (current: number, message?: string) => void
+    finish: (message?: string) => void
+    interrupt: (message: string, level?: LogLevel) => void
+  } {
+    if (!this.enabled || !this.fancy || isBrowserProcess() || total <= 0) {
+      // Return no-op functions if not applicable
+      return {
+        update: () => {},
+        finish: () => {},
+        interrupt: () => {},
+      }
+    }
+
+    // Ensure only one progress bar is active at a time per logger instance
+    if (this.activeProgressBar) {
+      console.warn('Warning: Another progress bar is already active. Finishing the previous one.')
+      this.finishProgressBar(this.activeProgressBar, '[Auto-finished]')
+    }
+
+    const barLength = 20 // Length of the progress bar visualization
+    this.activeProgressBar = {
+      total,
+      current: 0,
+      message: initialMessage,
+      barLength,
+      lastRenderedLine: '',
+    }
+
+    // Initial render
+    this.renderProgressBar(this.activeProgressBar)
+
+    const update = (current: number, message?: string): void => {
+      if (!this.activeProgressBar || !this.enabled || !this.fancy || isBrowserProcess())
+        return
+      this.activeProgressBar.current = Math.max(0, Math.min(total, current))
+      if (message !== undefined) {
+        this.activeProgressBar.message = message
+      }
+      this.renderProgressBar(this.activeProgressBar)
+    }
+
+    const finish = (message?: string): void => {
+      if (!this.activeProgressBar || !this.enabled || !this.fancy || isBrowserProcess())
+        return
+      // Ensure final state is 100%
+      this.activeProgressBar.current = this.activeProgressBar.total
+      if (message !== undefined) {
+        this.activeProgressBar.message = message
+      }
+      this.renderProgressBar(this.activeProgressBar, true) // Render final state
+      this.finishProgressBar(this.activeProgressBar)
+    }
+
+    const interrupt = (interruptMessage: string, level: LogLevel = 'info'): void => {
+      if (!this.activeProgressBar || !this.enabled || !this.fancy || isBrowserProcess())
+        return
+
+      // Clear the progress bar line
+      process.stdout.write(`${'\r'.padEnd(process.stdout.columns || 80)}\r`)
+
+      // Log the interrupting message using the standard log mechanism
+      // This uses console.error/warn internally, which might affect cursor position
+      // depending on the environment, but it keeps logging consistent.
+      void this.log(level, interruptMessage)
+
+      // Redraw the progress bar after a short delay to allow the interrupt message to print
+      // This isn't perfect but helps avoid immediate overwrite.
+      setTimeout(() => {
+        if (this.activeProgressBar) { // Check if still active
+          this.renderProgressBar(this.activeProgressBar)
+        }
+      }, 50)
+    }
+
+    return { update, finish, interrupt }
+  }
+
+  // Helper to render the progress bar
+  private renderProgressBar(
+    barState: NonNullable<Logger['activeProgressBar']>,
+    isFinished: boolean = false,
+  ): void {
+    if (!this.enabled || !this.fancy || isBrowserProcess() || !process.stdout.isTTY)
+      return
+
+    const percent = Math.min(100, Math.max(0, Math.round((barState.current / barState.total) * 100)))
+    const filledLength = Math.round((barState.barLength * percent) / 100)
+    const emptyLength = barState.barLength - filledLength
+
+    const filledBar = terminalStyles.green('━'.repeat(filledLength))
+    const emptyBar = terminalStyles.gray('━'.repeat(emptyLength))
+    const bar = `[${filledBar}${emptyBar}]`
+
+    const percentageText = `${percent}%`.padStart(4)
+    const messageText = barState.message ? ` ${barState.message}` : ''
+
+    // Use a simpler icon for progress
+    const icon = isFinished ? terminalStyles.green('✓') : terminalStyles.blue('▶')
+
+    const line = `\r${icon} ${bar} ${percentageText}${messageText}`
+
+    // Clear the rest of the line and write the new progress
+    const terminalWidth = process.stdout.columns || 80
+    const clearLine = ' '.repeat(Math.max(0, terminalWidth - line.replace(this.ANSI_PATTERN, '').length))
+
+    barState.lastRenderedLine = `${line}${clearLine}`
+    process.stdout.write(barState.lastRenderedLine)
+
+    // If finished, add a newline to move off the progress line
+    if (isFinished) {
+      process.stdout.write('\n')
+    }
+  }
+
+  // Helper to clean up the progress bar state
+  private finishProgressBar(
+    barState: NonNullable<Logger['activeProgressBar']>,
+    finalMessage?: string,
+  ): void {
+    if (!this.enabled || !this.fancy || isBrowserProcess() || !process.stdout.isTTY) {
+      this.activeProgressBar = null
+      return
+    }
+
+    // Ensure final render happens if not already done
+    if (barState.current < barState.total) {
+      barState.current = barState.total
+    }
+    if (finalMessage)
+      barState.message = finalMessage
+    this.renderProgressBar(barState, true) // Render final state with newline
+
+    this.activeProgressBar = null // Clear the active state
   }
 }
 
