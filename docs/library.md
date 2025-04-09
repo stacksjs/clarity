@@ -495,6 +495,52 @@ export const MyComponent: Component = {
 }
 ```
 
+### Progress Bar
+
+Clarity can display a dynamic progress bar directly in the console for long-running tasks, provided `fancy` mode is enabled and the code is running in a Node.js environment with a TTY.
+
+```ts
+const logger = new Logger('task-runner', { fancy: true })
+
+async function runTask() {
+  const totalSteps = 50
+  // Initialize the progress bar
+  const progressBar = logger.progress(totalSteps, 'Starting task...')
+
+  for (let i = 0; i <= totalSteps; i++) {
+    // Simulate work
+    await new Promise(resolve => setTimeout(resolve, 80))
+
+    // Update the progress bar display
+    progressBar.update(i, `Processing step ${i}...`)
+
+    // Example: Log an interruption without breaking the flow
+    if (i === 25) {
+      progressBar.interrupt('Checkpoint reached, pausing briefly.', 'info')
+      await new Promise(resolve => setTimeout(resolve, 500)) // Simulate pause
+    }
+  }
+
+  // Mark the progress bar as complete
+  progressBar.finish('Task completed successfully!')
+}
+
+runTask()
+```
+
+**Method:** `logger.progress(total: number, initialMessage?: string)`
+
+- `total`: The maximum value representing 100% completion.
+- `initialMessage` (optional): A message to display alongside the progress bar initially.
+
+**Returns:** An object with the following methods:
+
+- `update(current: number, message?: string)`: Updates the progress bar to reflect the `current` value (out of `total`). Optionally updates the displayed message.
+- `finish(message?: string)`: Sets the progress bar to 100%, optionally displays a final message, and moves the cursor to the next line.
+- `interrupt(message: string, level?: LogLevel = 'info')`: Temporarily clears the progress bar line, logs the provided `message` using the specified `level` (or 'info' by default), and then redraws the progress bar at its previous state. This is useful for logging warnings or intermediate info without permanently disrupting the bar.
+
+**Note:** If `fancy` mode is disabled, or if running in a non-TTY environment (like a browser or CI pipeline), calling `logger.progress` will return methods that perform no action. Standard log calls (`logger.info`, `logger.warn`, etc.) made while a progress bar is active might interfere with its display; use the `interrupt` method for logging during progress updates.
+
 ## Best Practices
 
 ### 1. Consistent Naming
