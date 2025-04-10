@@ -27,6 +27,10 @@ const terminalStyles = {
   white: (text: string) => `\x1B[37m${text}\x1B[0m`,
   gray: (text: string) => `\x1B[90m${text}\x1B[0m`,
 
+  // Background colors
+  bgRed: (text: string) => `\x1B[41m${text}\x1B[0m`,
+  bgYellow: (text: string) => `\x1B[43m${text}\x1B[0m`,
+
   // Text styles
   bold: (text: string) => `\x1B[1m${text}\x1B[0m`,
   dim: (text: string) => `\x1B[2m${text}\x1B[0m`,
@@ -42,8 +46,8 @@ const levelIcons = {
   debug: '🔍',
   info: terminalStyles.green('ℹ'),
   success: terminalStyles.green('✓'),
-  warning: terminalStyles.yellow('WARN'), // Use badge style for warnings
-  error: terminalStyles.red('ERROR'), // Use badge style for errors
+  warning: terminalStyles.bgYellow(terminalStyles.white(terminalStyles.bold(' WARN '))), // Use badge style for warnings
+  error: terminalStyles.bgRed(terminalStyles.white(terminalStyles.bold(' ERROR '))), // Use badge style for errors
 }
 
 interface FingersCrossedConfig {
@@ -100,7 +104,7 @@ export class Logger {
   private fancy: boolean // Whether to use fancy terminal output
   private tagFormat: TagFormat
   private timestampPosition: 'left' | 'right'
-  private readonly ANSI_PATTERN = /\u001B\[\d+m/g
+  private readonly ANSI_PATTERN = /\x1B\[\d+m/g
   private activeProgressBar: { // State for the active progress bar
     total: number
     current: number
