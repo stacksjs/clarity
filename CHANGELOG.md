@@ -1,3 +1,19 @@
+## v0.3.7...main
+
+[compare changes](https://github.com/stacksjs/clarity/compare/v0.3.7...main)
+
+### 🩹 Fixes
+
+- Enhance terminal timestamp ([94f3f40](https://github.com/stacksjs/clarity/commit/94f3f40))
+
+### 🏡 Chore
+
+- Add background color ([05050b6](https://github.com/stacksjs/clarity/commit/05050b6))
+
+### ❤️ Contributors
+
+- Cab-mikee ([@cab-mikee](https://github.com/cab-mikee))
+
 ## v0.3.6...main
 
 [compare changes](https://github.com/stacksjs/clarity/compare/v0.3.6...main)
