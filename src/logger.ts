@@ -104,7 +104,7 @@ export class Logger {
   private fancy: boolean // Whether to use fancy terminal output
   private tagFormat: TagFormat
   private timestampPosition: 'left' | 'right'
-  private readonly ANSI_PATTERN = /\x1B\[\d+m/g
+  private readonly ANSI_PATTERN = /\u001B\[.*?m/g // Use Unicode escape for ANSI sequence
   private activeProgressBar: { // State for the active progress bar
     total: number
     current: number
@@ -809,6 +809,9 @@ export class Logger {
   private formatConsoleMessage(parts: { timestamp: string, icon?: string, tag?: string, message: string, level?: LogLevel, showTimestamp?: boolean }): string {
     const { timestamp, icon = '', tag = '', message, level, showTimestamp = true } = parts
 
+    // Helper function to strip ANSI codes
+    const stripAnsi = (str: string) => str.replace(this.ANSI_PATTERN, '')
+
     // If fancy mode is disabled, return a simple format
     if (!this.fancy) {
       const components = []
@@ -850,7 +853,10 @@ export class Logger {
     }
 
     // Calculate padding needed to push timestamp to far right
-    const padding = Math.max(1, terminalWidth - mainPart.length - timestamp.length)
+    const visibleMainPartLength = stripAnsi(mainPart).trim().length
+    const visibleTimestampLength = stripAnsi(timestamp).length
+    const padding = Math.max(1, terminalWidth - 2 - visibleMainPartLength - visibleTimestampLength) // Re-apply -2 for right padding
+
     return `${mainPart.trim()}${' '.repeat(padding)}${timestamp}`
   }
 
