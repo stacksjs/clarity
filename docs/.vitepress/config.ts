@@ -90,7 +90,6 @@ const sidebar = [
       { text: 'Colors', link: '/api/colors' },
       { text: 'Format', link: '/api/format' },
       { text: 'Utils', link: '/api/utils' },
-      { text: 'Browser', link: '/api/browser' },
     ],
   },
   { text: 'Showcase', link: '/Showcase' },

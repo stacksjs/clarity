@@ -1,234 +1,147 @@
-# Config API Reference
+# Config
 
-Clarity provides a configuration system that allows you to control logging behavior through a `ClarityConfig` object.
-
-## Configuration Interface
-
-The core configuration interface defines all available options:
-
-```ts
-interface ClarityConfig {
-  /**
-   * Default log level
-   * @default 'info'
-   */
-  level: LogLevel
-
-  /**
-   * Default logger name
-   * @default 'clarity'
-   */
-  defaultName: string
-
-  /**
-   * Show timestamps in logs
-   * @default true
-   */
-  timestamp: boolean
-
-  /**
-   * Enable colored output
-   * @default true
-   */
-  colors: boolean
-
-  /**
-   * Default output format
-   * @default 'text'
-   */
-  format: 'text' | 'json'
-
-  /**
-   * Maximum size of log files in bytes before rotation
-   * @default 10485760 // (10MB)
-   */
-  maxLogSize: number
-
-  /**
-   * Date pattern for rotated files
-   * @default 'YYYY-MM-DD'
-   */
-  logDatePattern: string
-
-  /**
-   * Directory to store log files
-   * If not specified, defaults to {project_root}/logs
-   */
-  logDirectory: string
-
-  /**
-   * Log rotation configuration
-   */
-  rotation: boolean | RotationConfig
-
-  /**
-   * Enable verbose output
-   * @default false
-   */
-  verbose: boolean
-}
-```
+The config module provides functionality for configuring the Clarity logging system, including default settings and configuration loading.
 
 ## Default Configuration
 
-Clarity provides sensible defaults that you can override as needed:
+Clarity comes with sensible default settings that work out of the box. The default configuration is defined in the `defaultConfig` object:
 
 ```ts
-export const defaultConfig: ClarityConfig = {
-  level: 'info',
-  defaultName: 'clarity',
-  timestamp: true,
-  colors: true,
-  format: 'text',
-  maxLogSize: 10 * 1024 * 1024, // 10MB
-  logDatePattern: 'YYYY-MM-DD',
-  logDirectory: defaultLogDirectory, // logs folder in project root
-  rotation: {
-    frequency: 'daily',
-    maxSize: 10 * 1024 * 1024,
-    maxFiles: 5,
-    compress: false,
-    rotateHour: 0,
-    rotateMinute: 0,
-    rotateDayOfWeek: 0,
-    rotateDayOfMonth: 1,
-    encrypt: false,
-  },
-  verbose: false,
-}
+import { defaultConfig } from 'clarity'
+
+// Default config includes:
+// - Log level: info
+// - Default logger name: clarity
+// - Timestamps enabled
+// - Colors enabled
+// - Text format
+// - 10MB max log size
+// - Daily rotation
+// - Logs stored in <project_root>/logs
 ```
 
-## Rotation Configuration
+## Configuration Structure
 
-The `RotationConfig` interface provides detailed control over log rotation:
+The configuration follows the `ClarityConfig` interface, which includes:
 
-```ts
-interface RotationConfig {
-  /** Maximum file size in bytes before rotation */
-  maxSize?: number
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `level` | `LogLevel` | `'info'` | Default log level for all loggers |
+| `defaultName` | `string` | `'clarity'` | Default name for new loggers |
+| `timestamp` | `boolean` | `true` | Whether to include timestamps in logs |
+| `colors` | `boolean` | `true` | Whether to use colors in console output |
+| `format` | `'text'` \| `'json'` | `'text'` | Default output format |
+| `maxLogSize` | `number` | `10485760` (10MB) | Maximum size of individual log files |
+| `logDatePattern` | `string` | `'YYYY-MM-DD'` | Date pattern for log files |
+| `logDirectory` | `string` | `'<project_root>/logs'` | Directory where logs are stored |
+| `rotation` | `boolean` \| `RotationConfig` | See below | Log rotation settings |
+| `verbose` | `boolean` | `false` | Whether to enable verbose output |
 
-  /** Maximum number of rotated files to keep */
-  maxFiles?: number
+### Default Rotation Configuration
 
-  /** Maximum log age in days before deletion */
-  maxAge?: number
-
-  /** Whether to compress rotated files */
-  compress?: boolean
-
-  /** Time-based rotation frequency */
-  frequency?: 'daily' | 'weekly' | 'monthly'
-
-  /** Hour of the day to perform rotation (0-23) */
-  rotateHour?: number
-
-  /** Minute of the hour to perform rotation (0-59) */
-  rotateMinute?: number
-
-  /** Day of week for weekly rotation (0-6, 0 is Sunday) */
-  rotateDayOfWeek?: number
-
-  /** Day of month for monthly rotation (1-31) */
-  rotateDayOfMonth?: number
-
-  /** Custom log file name pattern */
-  pattern?: string
-
-  /** Enable encryption of rotated files */
-  encrypt?: EncryptionConfig | boolean
-
-  /** Key rotation configuration */
-  keyRotation?: {
-    enabled?: boolean
-    interval?: number
-    maxKeys?: number
-  }
-}
-```
-
-## Encryption Configuration
-
-Configure log file encryption with the `EncryptionConfig` interface:
+The default rotation configuration is:
 
 ```ts
-interface EncryptionConfig {
-  /** Encryption algorithm to use */
-  algorithm?: 'aes-256-cbc' | 'aes-256-gcm' | 'chacha20-poly1305'
-
-  /** Key identifier for managing multiple encryption keys */
-  keyId?: string
-
-  /** Whether to compress data before encryption */
-  compress?: boolean
-
-  /** Key rotation configuration */
-  keyRotation?: {
-    enabled: boolean
-    interval: number // in days
-    maxKeys: number
-  }
+{
+  frequency: 'daily',
+  maxSize: 10 * 1024 * 1024, // 10MB
+  maxFiles: 5,
+  compress: false,
+  rotateHour: 0,
+  rotateMinute: 0,
+  rotateDayOfWeek: 0,
+  rotateDayOfMonth: 1,
+  encrypt: false,
 }
 ```
 
 ## Loading Configuration
 
-Clarity loads configuration from:
+Clarity automatically loads configuration from various sources, with the following priority (highest to lowest):
 
-1. Defaults
-2. Configuration file (clarity.config.js/ts/json)
-3. Environment variables
-4. Programmatic overrides
+1. Environment variables (e.g., `CLARITY_LOG_DIR`)
+2. Configuration file (`clarity.config.js`, `clarity.config.ts`, etc.)
+3. Default configuration
+
+The configuration is loaded using the Bunfig library:
 
 ```ts
-// Configuration is loaded at initialization
 import { config } from 'clarity'
 
-// Access configuration values
-console.log(config.level) // 'info'
-console.log(config.logDirectory) // '/path/to/logs'
+// Access the loaded configuration
+console.log(`Log level: ${config.level}`)
+console.log(`Log directory: ${config.logDirectory}`)
 ```
-
-## Environment Variables
-
-Clarity supports configuration through environment variables:
-
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `CLARITY_LOG_LEVEL` | Default log level | `CLARITY_LOG_LEVEL=debug` |
-| `CLARITY_LOG_DIR` | Directory for log files | `CLARITY_LOG_DIR=/var/logs/app` |
-| `CLARITY_FORMAT` | Default log format | `CLARITY_FORMAT=json` |
-| `CLARITY_TIMESTAMP` | Enable timestamps | `CLARITY_TIMESTAMP=false` |
-| `CLARITY_COLORS` | Enable colors | `CLARITY_COLORS=false` |
-| `CLARITY_VERBOSE` | Enable verbose output | `CLARITY_VERBOSE=true` |
 
 ## Project Root Detection
 
-Clarity includes utilities for finding the project root:
+The module includes a utility function to detect the project root:
 
 ```ts
 function getProjectRoot(filePath?: string, options: { relative?: boolean } = {}): string
 ```
 
-This function:
+This function is used internally to resolve the default log directory and can be used to resolve paths relative to the project root.
 
-- Finds the directory containing your application's package.json
-- Optionally accepts a sub-path to join with the root
-- Can return absolute or relative paths
+## Environment Variables
 
-## Configuration File
+You can use environment variables to override configuration:
 
-Clarity supports loading configuration from a configuration file using [bunfig](https://github.com/wobsoriano/bunfig):
+| Environment Variable | Description |
+|----------------------|-------------|
+| `CLARITY_LOG_DIR` | Overrides the log directory |
+| `CLARITY_VERBOSE` | Set to `'true'` to enable verbose mode |
+
+## API Reference
+
+### config
+
+The loaded configuration object:
 
 ```ts
-// clarity.config.ts
-export default {
+import { config } from 'clarity'
+
+// Example usage
+const logger = new Logger('myapp', {
+  level: config.level,
+  logDirectory: config.logDirectory,
+})
+```
+
+### defaultConfig
+
+The default configuration object:
+
+```ts
+import { defaultConfig } from 'clarity'
+
+// Example: Create a custom config based on defaults
+const customConfig = {
+  ...defaultConfig,
   level: 'debug',
-  rotation: {
-    frequency: 'daily',
-    compress: true,
-  },
-  logDirectory: './app/logs',
+  format: 'json',
 }
 ```
 
-The configuration system provides flexibility while maintaining sensible defaults for a smooth logging experience.
+## Custom Configuration File
+
+You can create a `clarity.config.js` or `clarity.config.ts` file in your project root to customize the configuration:
+
+```ts
+// clarity.config.ts
+import type { ClarityConfig } from 'clarity'
+
+const config: Partial<ClarityConfig> = {
+  level: 'debug',
+  format: 'json',
+  logDirectory: './custom-logs',
+  rotation: {
+    frequency: 'daily',
+    maxSize: 5 * 1024 * 1024, // 5MB
+    maxFiles: 10,
+    compress: true,
+  },
+}
+
+export default config
+```

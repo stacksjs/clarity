@@ -1,237 +1,399 @@
-# Logger API Reference
+# Logger
 
-The `Logger` class is the core of Clarity, providing methods for logging, performance tracking, and log management.
+The Logger class is the core component of Clarity, providing robust logging functionality with support for multiple output formats, log levels, file rotation, encryption, and more.
 
-## Creating a Logger
+## Basic Usage
 
 ```ts
 import { Logger } from 'clarity'
 
-// Create a logger with a namespace
+// Create a logger with a name
 const logger = new Logger('app')
 
-// Create a logger with options
-const configuredLogger = new Logger('api', {
-  level: 'debug',
-  format: 'json',
-  logDirectory: './logs',
-  rotation: {
-    frequency: 'daily',
-    maxSize: 10 * 1024 * 1024,
-    compress: true,
-  },
-  fingersCrossedEnabled: true,
-  fingersCrossed: {
-    activationLevel: 'error',
-    bufferSize: 50,
-  },
-  fancy: true,
-  showTags: true,
+// Log methods for different levels
+await logger.debug('Debugging information')
+await logger.info('Application started')
+await logger.success('Operation completed successfully')
+await logger.warn('Warning: disk space low')
+await logger.error('Failed to connect to database')
+
+// Log with formatted messages
+await logger.info('User %s logged in from %s', 'alice', '192.168.1.1')
+await logger.info('Processing %d items', 100)
+
+// Log with object data
+await logger.info('Request completed', {
+  method: 'GET',
+  path: '/api/users',
+  statusCode: 200,
+  duration: 25
 })
-```
 
-## Constructor Options
-
-The Logger constructor accepts options that control its behavior:
-
-```ts
-interface ExtendedLoggerOptions {
-  // Log configuration
-  level?: LogLevel
-  format?: 'json' | 'text'
-  logDirectory?: string
-  rotation?: RotationConfig
-
-  // Custom formatting
-  formatter?: Formatter
-  fancy?: boolean
-  showTags?: boolean
-  tagFormat?: { prefix?: string, suffix?: string }
-  timestampPosition?: 'left' | 'right'
-
-  // Fingers-crossed buffering
-  fingersCrossedEnabled?: boolean
-  fingersCrossed?: {
-    activationLevel?: LogLevel
-    bufferSize?: number
-    flushOnDeactivation?: boolean
-    stopBuffering?: boolean
-  }
-
-  // Other settings
-  enabled?: boolean
+// Log errors with stack traces
+try {
+  throw new Error('Connection refused')
+} catch (err) {
+  await logger.error(err)
 }
 ```
 
-## Logging Methods
-
-### Basic Logging
+## Constructor
 
 ```ts
-// Log at different levels
-await logger.debug(message: string, ...args: any[]): Promise<void>
-await logger.info(message: string, ...args: any[]): Promise<void>
-await logger.success(message: string, ...args: any[]): Promise<void>
-await logger.warn(message: string, ...args: any[]): Promise<void>
-await logger.error(message: string | Error, ...args: any[]): Promise<void>
+constructor(name: string, options: Partial<ExtendedLoggerOptions> = {})
 ```
 
-All logging methods:
+Creates a new logger instance.
 
-- Return Promises for proper async/await handling
-- Support format string placeholders (%s, %d, %j, %o)
-- Accept additional arguments that will be serialized
+**Parameters:**
 
-### Performance Tracking
+- `name`: A unique name for the logger, used for namespacing logs
+- `options`: Configuration options for the logger
+
+**Options:**
+
+- `level`: The minimum log level to record (`'debug'`, `'info'`, `'success'`, `'warning'`, `'error'`)
+- `format`: Output format (`'json'` or `'text'`)
+- `logDirectory`: Directory to store log files
+- `rotation`: Log rotation configuration
+- `timestamp`: Timestamp format or boolean to enable/disable
+- `formatter`: Custom formatter implementation
+- `fingersCrossedEnabled`: Enable "fingers-crossed" logging mode
+- `fingersCrossed`: Configuration for fingers-crossed mode
+- `enabled`: Whether logging is enabled
+- `fancy`: Enable fancy terminal output with colors and formatting
+- `showTags`: Show logger name tags in console output
+- `tagFormat`: Custom format for tags
+- `timestampPosition`: Control timestamp position (`'left'` or `'right'`)
+
+## Log Methods
+
+### debug, info, success, warn, error
 
 ```ts
-// Start timing an operation
-const end = logger.time(label: string): (metadata?: Record<string, any>) => Promise<void>
-
-// End timing and log the result
-await end() // Shows elapsed time
-await end({ /* additional metadata */ }) // Shows time with metadata
-
-// Simpler start/end pattern
-await logger.start(message: string, ...args: any[]): Promise<void>
-// ... then end with any log level
-await logger.success(message: string): Promise<void> // Shows elapsed time
+async debug(message: string, ...args: any[]): Promise<void>
+async info(message: string, ...args: any[]): Promise<void>
+async success(message: string, ...args: any[]): Promise<void>
+async warn(message: string, ...args: any[]): Promise<void>
+async error(message: string | Error, ...args: any[]): Promise<void>
 ```
 
-### Progress Tracking
+Log a message at the specified level.
+
+**Parameters:**
+
+- `message`: The message to log (string or Error object for error method)
+- `args`: Additional arguments for formatting or to be included in the log
+
+## Special Logging Methods
+
+### time
 
 ```ts
-// Create a progress tracker
-const progress = logger.progress(
-  total: number,
-  initialMessage: string = ''
-): {
+time(label: string): (metadata?: Record<string, any>) => Promise<void>
+```
+
+Starts timing an operation and returns a function to stop timing.
+
+```ts
+const stopTimer = logger.time('database-query')
+// Do some work...
+await stopTimer({ records: 150 }) // Logs completion with elapsed time
+```
+
+### box
+
+```ts
+async box(message: string): Promise<void>
+```
+
+Creates a boxed message in the console for important information.
+
+```ts
+await logger.box('Application started in development mode')
+```
+
+### prompt
+
+```ts
+async prompt(message: string): Promise<boolean>
+```
+
+Displays a confirmation prompt and returns the user's response.
+
+```ts
+if (await logger.prompt('Delete all logs?')) {
+  // User confirmed
+}
+```
+
+### progress
+
+```ts
+progress(total: number, initialMessage: string = ''): {
   update: (current: number, message?: string) => void
   finish: (message?: string) => void
   interrupt: (message: string, level?: LogLevel) => void
 }
+```
 
-// Update progress
-progress.update(45, 'Processing file 45/100')
+Creates and manages a progress bar in the console.
 
-// Complete progress
+```ts
+const progress = logger.progress(100, 'Processing files')
+for (let i = 0; i < 100; i++) {
+  // Do work...
+  progress.update(i + 1, `Processing file ${i + 1}/100`)
+}
 progress.finish('All files processed')
-
-// Show a message without disrupting the progress bar
-progress.interrupt('Found duplicate files', 'warning')
 ```
 
-### Fancy Output
+### start
 
 ```ts
-// Create boxed message
-await logger.box(message: string): Promise<void>
-
-// Interactive prompt
-const confirmed = await logger.prompt(message: string): Promise<boolean>
-
-// Enable/disable fancy output
-logger.setFancy(enabled: boolean): void
-logger.isFancy(): boolean
+async start(message: string, ...args: any[]): Promise<void>
 ```
 
-## Log Management
-
-### Creating Sub-Loggers
+Logs a starting task with a spinner-like indicator.
 
 ```ts
-// Create a namespaced sub-logger
-const subLogger = logger.extend(namespace: string): Logger
+await logger.start('Initializing server')
+```
 
-// Examples
+## Control Methods
+
+### destroy
+
+```ts
+async destroy(): Promise<void>
+```
+
+Cleans up resources and flushes pending writes.
+
+```ts
+await logger.destroy()
+```
+
+### flushPendingWrites
+
+```ts
+async flushPendingWrites(): Promise<void>
+```
+
+Ensures all pending log writes are committed to disk.
+
+### extend
+
+```ts
+extend(namespace: string): Logger
+```
+
+Creates a child logger with a sub-namespace.
+
+```ts
+const logger = new Logger('app')
 const dbLogger = logger.extend('database')
-const authLogger = dbLogger.extend('auth') // Results in 'app:database:auth'
+await dbLogger.info('Connected') // Logs as 'app:database'
 ```
 
-### Controlling Log State
+### setEnabled / isEnabled
 
 ```ts
-// Enable/disable logging
-logger.setEnabled(enabled: boolean): void
-logger.isEnabled(): boolean
-
-// Pause/resume logging (temporary state)
-logger.pause(): void
-logger.resume(): void
-
-// Conditional execution - only runs if logging is enabled
-await logger.only<T>(fn: () => T | Promise<T>): Promise<T | undefined>
+setEnabled(enabled: boolean): void
+isEnabled(): boolean
 ```
 
-### Log File Operations
+Controls whether logging is enabled.
 
 ```ts
-// Get current log file path
-logger.getCurrentLogFilePath(): string
-
-// Create a readable stream of the current log file
-const stream = logger.createReadStream(): NodeJS.ReadableStream
-
-// Decrypt encrypted log data
-const plaintext = await logger.decrypt(data: string | Buffer): Promise<string>
-
-// Clean up resources
-await logger.destroy(): Promise<void>
-
-// Flush pending writes to ensure all logs are written
-await logger.flushPendingWrites(): Promise<void>
+logger.setEnabled(false) // Disable logging
+if (logger.isEnabled()) {
+  // Logging is enabled
+}
 ```
 
-### Configuration Access
+### pause / resume
 
 ```ts
-// Get current log level
-logger.getLevel(): LogLevel
-
-// Get log directory path
-logger.getLogDirectory(): string
-
-// Get current format
-logger.getFormat(): string | undefined
-
-// Get rotation configuration
-logger.getRotationConfig(): RotationConfig | boolean | undefined
-
-// Check environment
-logger.isBrowserMode(): boolean
-logger.isServerMode(): boolean
-
-// Get full configuration
-logger.getConfig(): ClarityConfig
+pause(): void
+resume(): void
 ```
 
-## Advanced Features
+Temporarily pauses or resumes logging.
 
-### Encryption
+### setFancy / isFancy
 
 ```ts
-// Check if encryption is properly configured
-logger.validateEncryptionConfig(): boolean
-
-// Get encryption options
-logger.getEncryptionOptions(): EncryptionConfig
-
-// Testing utilities (for unit tests)
-logger.setTestEncryptionKey(keyId: string, key: Buffer): void
-logger.getTestCurrentKey(): { id: string, key: Buffer } | null
+setFancy(enabled: boolean): void
+isFancy(): boolean
 ```
 
-### Log Rotation
+Controls fancy terminal output.
+
+### only
 
 ```ts
-// Generate log filename based on date pattern
-logger.generateLogFilename(): string
-
-// Set up automatic rotation
-logger.setupRotation(): void
-
-// Manually rotate log file
-await logger.rotateLog(): Promise<void>
+async only<T>(fn: () => T | Promise<T>): Promise<T | undefined>
 ```
 
-The Logger class provides a comprehensive API for all logging needs, from simple message logging to advanced performance tracking and log management.
+Executes a function only if logging is enabled.
+
+```ts
+const result = await logger.only(async () => {
+  // Expensive logging-related operation
+  return calculateStats()
+})
+```
+
+## File Operations
+
+### createReadStream
+
+```ts
+createReadStream(): NodeJS.ReadableStream
+```
+
+Creates a readable stream of the current log file.
+
+### getCurrentLogFilePath
+
+```ts
+getCurrentLogFilePath(): string
+```
+
+Gets the path to the current log file.
+
+### decrypt
+
+```ts
+async decrypt(data: string | Buffer): Promise<string>
+```
+
+Decrypts encrypted log data.
+
+## Configuration Access
+
+### getLevel
+
+```ts
+getLevel(): LogLevel
+```
+
+Gets the current log level.
+
+### getLogDirectory
+
+```ts
+getLogDirectory(): string
+```
+
+Gets the current log directory.
+
+### getFormat
+
+```ts
+getFormat(): string | undefined
+```
+
+Gets the current format.
+
+### getRotationConfig
+
+```ts
+getRotationConfig(): RotationConfig | boolean | undefined
+```
+
+Gets the current rotation configuration.
+
+### getConfig
+
+```ts
+getConfig(): ClarityConfig
+```
+
+Gets the complete configuration.
+
+## Environment Detection
+
+### isBrowserMode
+
+```ts
+isBrowserMode(): boolean
+```
+
+Checks if the logger is running in browser mode.
+
+### isServerMode
+
+```ts
+isServerMode(): boolean
+```
+
+Checks if the logger is running in server mode.
+
+## Default Logger
+
+Clarity provides a pre-configured logger instance:
+
+```ts
+import { logger } from 'clarity'
+
+// Use the default logger
+await logger.info('Application started')
+```
+
+The default logger uses the name 'stacks' and applies the global configuration.
+
+## Advanced Examples
+
+### Custom Formatting
+
+```ts
+import { Logger, JsonFormatter } from 'clarity'
+
+const logger = new Logger('api', {
+  formatter: new JsonFormatter(),
+  fancy: true,
+  showTags: true,
+  tagFormat: { prefix: '«', suffix: '»' }
+})
+```
+
+### Fingers-Crossed Mode
+
+```ts
+import { Logger } from 'clarity'
+
+// Only write to log file when errors occur
+const logger = new Logger('app', {
+  fingersCrossedEnabled: true,
+  fingersCrossed: {
+    activationLevel: 'error',
+    bufferSize: 100,
+    flushOnDeactivation: true
+  }
+})
+```
+
+### Log Rotation with Encryption
+
+```ts
+import { Logger } from 'clarity'
+
+const logger = new Logger('secure-app', {
+  rotation: {
+    frequency: 'daily',
+    maxSize: 5 * 1024 * 1024,
+    compress: true,
+    encrypt: {
+      algorithm: 'aes-256-gcm',
+      compress: true,
+      keyRotation: {
+        enabled: true,
+        interval: 30,
+        maxKeys: 3
+      }
+    }
+  }
+})
+```
