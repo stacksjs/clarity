@@ -104,6 +104,7 @@ export class Logger {
   private fancy: boolean // Whether to use fancy terminal output
   private tagFormat: TagFormat
   private timestampPosition: 'left' | 'right'
+  // eslint-disable-next-line no-control-regex
   private readonly ANSI_PATTERN = /\u001B\[.*?m/g // Use Unicode escape for ANSI sequence
   private activeProgressBar: { // State for the active progress bar
     total: number
