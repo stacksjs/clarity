@@ -61,6 +61,38 @@ const sidebar = [
       { text: 'Config', link: '/config' },
     ],
   },
+  {
+    text: 'Features',
+    items: [
+      { text: 'Overview', link: '/features' },
+      { text: 'Logging', link: '/features/logging' },
+      { text: 'Formatting', link: '/features/formatting' },
+      { text: 'Performance', link: '/features/performance' },
+      { text: 'Rotation', link: '/features/rotation' },
+      { text: 'Encryption', link: '/features/encryption' },
+    ],
+  },
+  {
+    text: 'Advanced',
+    items: [
+      { text: 'Configuration', link: '/advanced/configuration' },
+      { text: 'Formatters', link: '/advanced/formatters' },
+      { text: 'Storage', link: '/advanced/storage' },
+      { text: 'Integrations', link: '/advanced/integrations' },
+    ],
+  },
+  {
+    text: 'API Reference',
+    items: [
+      { text: 'Logger', link: '/api/logger' },
+      { text: 'Config', link: '/api/config' },
+      { text: 'Types', link: '/api/types' },
+      { text: 'Colors', link: '/api/colors' },
+      { text: 'Format', link: '/api/format' },
+      { text: 'Utils', link: '/api/utils' },
+      { text: 'Browser', link: '/api/browser' },
+    ],
+  },
   { text: 'Showcase', link: '/Showcase' },
 ]
 const description = 'Modern debugging & logging library. For server & browser.'
