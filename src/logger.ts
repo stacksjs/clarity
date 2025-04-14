@@ -44,7 +44,7 @@ const terminalStyles = {
 // Log level icons/badges similar to consola
 const levelIcons = {
   debug: '🔍',
-  info: terminalStyles.green('ℹ'),
+  info: terminalStyles.blue('ℹ'),
   success: terminalStyles.green('✓'),
   warning: terminalStyles.bgYellow(terminalStyles.white(terminalStyles.bold(' WARN '))), // Use badge style for warnings
   error: terminalStyles.bgRed(terminalStyles.white(terminalStyles.bold(' ERROR '))), // Use badge style for errors
@@ -1528,7 +1528,9 @@ export class Logger {
       if (message !== undefined) {
         this.activeProgressBar.message = message
       }
-      this.renderProgressBar(this.activeProgressBar)
+
+      const isFinished = this.activeProgressBar.current === this.activeProgressBar.total
+      this.renderProgressBar(this.activeProgressBar, isFinished)
     }
 
     const finish = (message?: string): void => {
@@ -1587,7 +1589,7 @@ export class Logger {
     const messageText = barState.message ? ` ${barState.message}` : ''
 
     // Use a simpler icon for progress
-    const icon = isFinished ? terminalStyles.green('✓') : terminalStyles.blue('▶')
+    const icon = isFinished || percent === 100 ? terminalStyles.green('✓') : terminalStyles.blue('▶')
 
     const line = `\r${icon} ${bar} ${percentageText}${messageText}`
 
