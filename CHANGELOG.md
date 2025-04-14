@@ -1,3 +1,24 @@
+## v0.3.8...main
+
+[compare changes](https://github.com/stacksjs/clarity/compare/v0.3.8...main)
+
+### 📖 Documentation
+
+- Add features pages ([9eecf7a](https://github.com/stacksjs/clarity/commit/9eecf7a))
+- Add additional missing pages ([0c2e2ef](https://github.com/stacksjs/clarity/commit/0c2e2ef))
+
+### 🏡 Chore
+
+- Adjust linter ([c0527c2](https://github.com/stacksjs/clarity/commit/c0527c2))
+- Update pkgx ([f581f02](https://github.com/stacksjs/clarity/commit/f581f02))
+- Enhance progress bar and info icon color ([2a78eef](https://github.com/stacksjs/clarity/commit/2a78eef))
+- Minor changes ([58c16a3](https://github.com/stacksjs/clarity/commit/58c16a3))
+
+### ❤️ Contributors
+
+- Cab-mikee ([@cab-mikee](https://github.com/cab-mikee))
+- Chris ([@chrisbbreuer](https://github.com/chrisbbreuer))
+
 ## v0.3.7...main
 
 [compare changes](https://github.com/stacksjs/clarity/compare/v0.3.7...main)
