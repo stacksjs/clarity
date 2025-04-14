@@ -54,7 +54,6 @@ export class TimeHelper {
  * File system mocks
  */
 export class FSHelper {
-  private logs: Map<string, string> = new Map()
   private logger: Logger
 
   constructor(logger: Logger) {
@@ -62,92 +61,30 @@ export class FSHelper {
   }
 
   clear(): void {
-    this.logs.clear()
+    // This method might be used elsewhere, keep it as a no-op for now
+    // or adapt tests that use it.
   }
 
-  async getLogContents(): Promise<string> {
+  /**
+   * Reads the content of all log files associated with the logger.
+   * @returns A promise resolving to the concatenated content of all log files.
+   */
+  async readAllLogFiles(): Promise<string> {
     const files = await this.getLogFiles()
     let contents = ''
 
     for (const file of files) {
       const fileContents = await readFile(file) // Read as buffer
-      const lines = fileContents.toString().split('\n').filter(Boolean)
-
-      for (const line of lines) {
-        try {
-          let processedLine: string
-          if (line.startsWith('RAW: ')) {
-            processedLine = line.substring(5) // Remove RAW: prefix
-          }
-          else {
-            try {
-              // Try to decode as base64 first
-              const encryptedBuffer = Buffer.from(line, 'base64')
-              // eslint-disable-next-line no-console
-              console.log('Encrypted buffer: ', encryptedBuffer)
-              processedLine = await this.logger.decrypt(encryptedBuffer)
-            }
-            catch (error) {
-              // If base64 decoding or decryption fails, use raw line
-              console.error('Error decrypting log data:', error)
-              processedLine = line
-            }
-          }
-
-          // Extract message after timestamp and logger name
-          const parts = processedLine.split('[test]')
-          if (parts.length > 1) {
-            const timestamp = parts[0].trim()
-            const afterTest = parts[1].trim()
-            const message = afterTest.split(' ').slice(1).join(' ').trim()
-            if (message) {
-              contents += `${timestamp}  ${message}\n`
-            }
-          }
-          else {
-            // If the line doesn't contain [test], just add it as is
-            contents += `${processedLine}\n`
-          }
-        }
-        catch (error) {
-          console.error('Error processing line:', error)
-          // Skip lines that can't be processed
-          continue
-        }
-      }
+      contents += fileContents.toString() // Append raw content
     }
 
     return contents.trim()
   }
 
   async getLogFiles(): Promise<string[]> {
-    console.error('Looking for log files in directory:', this.logger.getLogDirectory())
     const files = await readdir(this.logger.getLogDirectory())
-    console.error('Found files:', files)
     const fullPaths = files.map(file => join(this.logger.getLogDirectory(), file))
-    console.error('Full paths:', fullPaths)
     return fullPaths
-  }
-
-  async getRawLogContents(): Promise<string> {
-    console.error('getRawLogContents called')
-    const files = await this.getLogFiles()
-    console.error('Found log files:', files)
-    let contents = ''
-
-    for (const file of files) {
-      const fileContents = await readFile(file, 'utf-8')
-      console.error('File content length:', fileContents.length)
-      contents += fileContents
-    }
-
-    console.error('Total raw contents length:', contents.length)
-    console.error('Raw log contents:', contents)
-    return contents
-  }
-
-  async decryptLogContents(): Promise<string> {
-    return this.getLogContents()
   }
 }
 

@@ -78,6 +78,7 @@ interface ExtendedLoggerOptions extends LoggerOptions {
   showTags?: boolean // Enable/disable tags in console output
   tagFormat?: TagFormat // Custom format for tags
   timestampPosition?: 'left' | 'right' // Control timestamp position in console output
+  environment?: string // Environment prefix for log entries
 }
 
 export class Logger {
@@ -104,6 +105,7 @@ export class Logger {
   private fancy: boolean // Whether to use fancy terminal output
   private tagFormat: TagFormat
   private timestampPosition: 'left' | 'right'
+  private environment: string // Environment prefix for log entries
   // eslint-disable-next-line no-control-regex
   private readonly ANSI_PATTERN = /\u001B\[.*?m/g // Use Unicode escape for ANSI sequence
   private activeProgressBar: { // State for the active progress bar
@@ -123,6 +125,7 @@ export class Logger {
     this.fancy = options.fancy ?? true // Enable fancy output by default
     this.tagFormat = options.tagFormat ?? { prefix: '[', suffix: ']' } // Default square bracket format
     this.timestampPosition = options.timestampPosition ?? 'right' // Default to left position
+    this.environment = options.environment ?? process.env.APP_ENV ?? 'local' // Use APP_ENV or default to 'local'
 
     // Initialize fingers-crossed config based on flag
     this.fingersCrossedConfig = this.initializeFingersCrossedConfig(options)
@@ -999,14 +1002,14 @@ export class Logger {
     }
     else if (!isBrowserProcess()) {
       // Simple console output without styling
-      console.error(`${fileTime} ${level.toUpperCase()}: ${formattedMessage}`)
+      console.error(`${fileTime} ${this.environment}.${level.toUpperCase()}: ${formattedMessage}`)
       if (errorStack) {
         console.error(errorStack)
       }
     }
 
     // Create the log entry for file logging
-    let logEntry = `${fileTime} local.${level.toUpperCase()}: ${formattedMessage}\n`
+    let logEntry = `${fileTime} ${this.environment}.${level.toUpperCase()}: ${formattedMessage}\n`
     if (errorStack) {
       logEntry += `${errorStack}\n`
     }
@@ -1050,7 +1053,7 @@ export class Logger {
       const consoleTime = this.formatConsoleTimestamp(timestamp)
       const fileTime = this.formatFileTimestamp(timestamp)
 
-      let logEntry = `${fileTime} local.INFO: ${completionMessage}`
+      let logEntry = `${fileTime} ${this.environment}.INFO: ${completionMessage}`
       if (metadata) {
         logEntry += ` ${JSON.stringify(metadata)}`
       }
@@ -1337,11 +1340,11 @@ export class Logger {
     }
     else if (!isBrowserProcess()) {
       // Simple console output without styling
-      console.error(`${fileTime} BOX: ${message}`)
+      console.error(`${fileTime} ${this.environment}.INFO: [BOX] ${message}`)
     }
 
     // Write directly to file instead of using this.info()
-    const logEntry = `${fileTime} local.INFO: [BOX] ${message}\n`
+    const logEntry = `${fileTime} ${this.environment}.INFO: [BOX] ${message}\n`
     await this.writeToFile(logEntry)
   }
 
@@ -1477,7 +1480,7 @@ export class Logger {
     // Log to file directly instead of using this.info()
     const timestamp = new Date()
     const formattedDate = timestamp.toISOString()
-    const logEntry = `[${formattedDate}] local.INFO: [START] ${formattedMessage}\n`
+    const logEntry = `[${formattedDate}] ${this.environment}.INFO: [START] ${formattedMessage}\n`
 
     await this.writeToFile(logEntry)
   }
@@ -1591,7 +1594,10 @@ export class Logger {
     // Use a simpler icon for progress
     const icon = isFinished || percent === 100 ? terminalStyles.green('✓') : terminalStyles.blue('▶')
 
-    const line = `\r${icon} ${bar} ${percentageText}${messageText}`
+    // Add tag if enabled
+    const tag = this.options.showTags !== false && this.name ? ` ${terminalStyles.gray(this.formatTag(this.name))}` : ''
+
+    const line = `\r${icon}${tag} ${bar} ${percentageText}${messageText}`
 
     // Clear the rest of the line and write the new progress
     const terminalWidth = process.stdout.columns || 80
@@ -1625,6 +1631,80 @@ export class Logger {
     this.renderProgressBar(barState, true) // Render final state with newline
 
     this.activeProgressBar = null // Clear the active state
+  }
+
+  /**
+   * Clears log files based on specified filters.
+   * @param filters Optional filters for clearing logs.
+   * @param filters.name A pattern to match logger names (e.g., 'api-*'). Only files matching this pattern will be considered.
+   * @param filters.before A Date object. Only log files with a last modified timestamp before this date will be deleted.
+   */
+  async clear(filters: { name?: string, before?: Date } = {}): Promise<void> {
+    if (isBrowserProcess()) {
+      console.warn('Log clearing is not supported in browser environments.')
+      return
+    }
+
+    try {
+      console.warn('Clearing logs...', this.config.logDirectory)
+      const files = await readdir(this.config.logDirectory)
+      const logFilesToDelete: string[] = []
+
+      for (const file of files) {
+        // Basic check: Must be a log file associated with this logger instance's base name
+        // or match the provided name filter if any.
+        const nameMatches = filters.name
+          ? new RegExp(filters.name.replace('*', '.*')).test(file)
+          : file.startsWith(this.name)
+
+        if (!nameMatches || !file.endsWith('.log')) {
+          continue // Skip files not matching the name or not ending in .log
+        }
+
+        const filePath = join(this.config.logDirectory, file)
+
+        // Date check: If 'before' filter is provided, check the file's last modified time.
+        if (filters.before) {
+          try {
+            const fileStats = await stat(filePath)
+            if (fileStats.mtime >= filters.before) {
+              continue // Skip files modified on or after the 'before' date
+            }
+          }
+          catch (statErr) {
+            console.error(`Failed to get stats for file ${filePath}:`, statErr)
+            continue // Skip if we cannot get stats
+          }
+        }
+
+        // If all checks pass, add the file to the deletion list.
+        logFilesToDelete.push(filePath)
+      }
+
+      if (logFilesToDelete.length === 0) {
+        console.warn('No log files matched the criteria for clearing.')
+        return
+      }
+
+      console.warn(`Preparing to delete ${logFilesToDelete.length} log file(s)...`)
+
+      // Delete the files
+      for (const filePath of logFilesToDelete) {
+        try {
+          await unlink(filePath)
+          console.warn(`Deleted log file: ${filePath}`)
+        }
+        catch (unlinkErr) {
+          console.error(`Failed to delete log file ${filePath}:`, unlinkErr)
+        }
+      }
+
+      console.warn('Log clearing process finished.')
+    }
+    catch (err) {
+      console.error('Error during log clearing process:', err)
+      // Optionally re-throw or handle the error more specifically
+    }
   }
 }
 

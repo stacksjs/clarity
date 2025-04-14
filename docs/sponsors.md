@@ -77,7 +77,7 @@ ___
   - Private Discord channel invite
   - Free Personal Account for Stacks Dashboard
   - Social media follow
-  - Name listed in the `BACKERS.md` file of >70x `stacksjs/core` repos, `stacksjs/stacks`, `audiox`, `buddy.sh`, `bunfig`, `bun-plugin-auto-imports`, `bun-plugin-dtsx`, `bun-plugin-unocss`, `clarity`, `dnsx`, `docs.stacksjs.org`, `dtsx`, `httx`, `imgx`, `localtunnel.sh`, `qrx`, `reverse-proxy.sh`, `tlsx.sh`, `ts-collect`, `ts-spreadsheets`, `vite-plugin-local`, `vidx` and few others, above other individual backers.
+  - Name listed in the `BACKERS.md` file of >70x `stacksjs/core` repos, `stacksjs/stacks`, `aax`, `audiox`, `buddy.sh`, `bun-git-hooks`, `bun-plugin-auto-imports`, `bun-plugin-dotenvx`, `bun-plugin-dtsx`, `bun-plugin-unocss`, `bunfig`, `clarity`, `dnsx`, `docs.stacksjs.org`, `dtsx`, `httx`, `imgx`, `jpgx`, `localtunnels.sh`, `pngx`, `post`, `qrx`, `reverse-proxy.sh`, `tlsx.sh`, `ts-avif`, `ts-cache`, `ts-clone`, `ts-collect`, `ts-countries`, `ts-gif`, `ts-maps`, `ts-ndarray`, `ts-punycode`, `ts-rate-limiter`, `ts-security`, `ts-spreadsheets`, `ts-svg`, `ts-vat`, `ts-webp`, `vidx`, `vite-plugin-dotenvx`, `vite-plugin-layouts`, `vite-plugin-local`, `vite-plugin-tauri`
 
 ___
 
