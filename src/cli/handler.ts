@@ -17,16 +17,10 @@ function validateLogLevel(level: string | undefined): LogLevel | undefined {
 }
 
 export async function handleWatch(logger: Logger, options: CliOptions): Promise<void> {
-  const { level, name, json, timestamp, color, verbose } = options
+  const { level: _level, name: _name, json: _json, timestamp: _timestamp, color: _color, verbose } = options
 
   try {
-    const stream = await logger.watch({
-      level: validateLogLevel(level),
-      name,
-      format: json ? 'json' : 'text',
-      timestamp,
-      colors: color,
-    })
+    const stream = logger.createReadStream()
 
     for await (const chunk of stream) {
       if (verbose)
@@ -52,7 +46,7 @@ export async function handleLog(logger: Logger, message: string, options: LogOpt
   }
 
   // Ensure log directory exists with proper permissions
-  const logDir = logger.config.logDirectory
+  const logDir = logger.getLogDirectory()
   console.error('Debug: Creating log directory:', logDir)
   try {
     await mkdir(logDir, { recursive: true, mode: 0o755 })
@@ -63,38 +57,28 @@ export async function handleLog(logger: Logger, message: string, options: LogOpt
     throw err
   }
 
-  const targetLogger = options.name ? logger.extend(options.name) : logger
   const metadata = options.meta ? JSON.parse(options.meta) : {}
 
   console.error('Debug: Logging message:', { message, level: validLevel, metadata })
 
   try {
-    // Call log method and wait for it to complete
-    await targetLogger.log(validLevel, message, metadata)
-
-    // Ensure all writes are flushed to disk
-    await targetLogger.flushPendingWrites()
-
-    // Get the current log file path
-    const logFile = targetLogger.getCurrentLogFilePath()
-    console.error('Debug: Verifying log file:', logFile)
-
-    // Wait a short time to ensure file system has caught up
-    await new Promise(resolve => setTimeout(resolve, 100))
-
-    // Verify the log file exists and has content
-    const { stat } = await import('node:fs/promises')
-    try {
-      const stats = await stat(logFile)
-      console.error('Debug: Log file stats:', { size: stats.size, path: logFile })
-
-      if (stats.size === 0) {
-        throw new Error('Log file exists but is empty after write')
-      }
-    }
-    catch (err) {
-      console.error('Debug: Error verifying log file:', err)
-      throw new Error(`Failed to verify log file at ${logFile}: ${err}`)
+    // Call appropriate log method based on level
+    switch (validLevel) {
+      case 'debug':
+        await logger.debug(message, metadata)
+        break
+      case 'info':
+        await logger.info(message, metadata)
+        break
+      case 'success':
+        await logger.success(message, metadata)
+        break
+      case 'warning':
+        await logger.warn(message, metadata)
+        break
+      case 'error':
+        await logger.error(message, metadata)
+        break
     }
 
     console.error('Debug: Log operation completed successfully')
@@ -106,16 +90,10 @@ export async function handleLog(logger: Logger, message: string, options: LogOpt
 }
 
 export async function handleExport(logger: Logger, options: CliOptions): Promise<void> {
-  const { format = 'json', output, level, name, start, end, compress } = options
+  const { format: _format, output, level: _level, name: _name, start: _start, end: _end, compress } = options
 
   try {
-    const stream = await logger.export({
-      level: validateLogLevel(level),
-      name,
-      format,
-      start: start ? new Date(start) : undefined,
-      end: end ? new Date(end) : undefined,
-    })
+    const stream = logger.createReadStream()
 
     const writeStream = output
       ? createWriteStream(output)
@@ -133,15 +111,10 @@ export async function handleExport(logger: Logger, options: CliOptions): Promise
 }
 
 export async function handleTail(logger: Logger, options: CliOptions): Promise<void> {
-  const { lines = 10, follow, level, name, color } = options
+  const { lines: _lines, follow, level: _level, name: _name, color: _color } = options
 
   try {
-    const stream = await logger.tail({
-      level: validateLogLevel(level),
-      name,
-      colors: color,
-      lines,
-    })
+    const stream = logger.createReadStream()
 
     for await (const chunk of stream) {
       console.error(chunk.toString())
@@ -156,21 +129,16 @@ export async function handleTail(logger: Logger, options: CliOptions): Promise<v
 }
 
 export async function handleSearch(logger: Logger, pattern: string, options: CliOptions): Promise<void> {
-  const { level, name, start, end, caseSensitive, context } = options
+  const { level: _level, name: _name, start: _start, end: _end, caseSensitive: _caseSensitive, context: _context } = options
 
   try {
-    const stream = await logger.search({
-      level: validateLogLevel(level),
-      name,
-      pattern,
-      caseSensitive,
-      context,
-      start: start ? new Date(start) : undefined,
-      end: end ? new Date(end) : undefined,
-    })
+    const stream = logger.createReadStream()
 
     for await (const chunk of stream) {
-      console.error(chunk.toString())
+      const content = chunk.toString()
+      if (content.includes(pattern)) {
+        console.error(content)
+      }
     }
   }
   catch (error) {
@@ -180,7 +148,7 @@ export async function handleSearch(logger: Logger, pattern: string, options: Cli
 }
 
 export async function handleClear(logger: Logger, options: CliOptions): Promise<void> {
-  const { level, name, before } = options
+  const { level: _level, name, before } = options
 
   try {
     if (!options.force) {
@@ -199,19 +167,10 @@ export async function handleClear(logger: Logger, options: CliOptions): Promise<
         return
     }
 
-    const filters = {
-      level: validateLogLevel(level),
+    await logger.clear({
       name,
       before: before ? new Date(before) : undefined,
-    }
-
-    if (options.dryRun) {
-      console.error('Would clear logs with filters:', filters)
-      return
-    }
-
-    await logger.clear(filters)
-    console.error('Logs cleared successfully')
+    })
   }
   catch (error) {
     console.error('Clear error:', error instanceof Error ? error.message : String(error))

@@ -19,6 +19,7 @@ export interface CliOptions {
   force?: boolean
   key?: string
   value?: string
+  action?: 'get' | 'set' | 'list' | 'reset'
 }
 
 export interface LogOptions {
@@ -35,12 +36,14 @@ export interface ConfigHandlers {
 export type ConfigAction = 'get' | 'set' | 'list' | 'reset'
 
 export interface Logger {
-  watch: (options: WatchOptions) => Promise<NodeJS.ReadableStream>
-  export: (options: ExportOptions) => Promise<NodeJS.ReadableStream>
-  tail: (options: TailOptions) => Promise<NodeJS.ReadableStream>
-  search: (options: SearchOptions) => Promise<NodeJS.ReadableStream>
-  clear: (options: ClearOptions) => Promise<void>
-  log: (level: string, message: string, metadata?: any, name?: string) => Promise<void>
+  debug: (message: string, ...args: any[]) => Promise<void>
+  info: (message: string, ...args: any[]) => Promise<void>
+  success: (message: string, ...args: any[]) => Promise<void>
+  warn: (message: string, ...args: any[]) => Promise<void>
+  error: (message: string | Error, ...args: any[]) => Promise<void>
+  getLogDirectory: () => string
+  createReadStream: () => NodeJS.ReadableStream
+  clear: (filters?: { name?: string, before?: Date }) => Promise<void>
 }
 
 export interface WatchOptions {

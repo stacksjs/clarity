@@ -1,4 +1,4 @@
-import type { ConfigOptions } from './types'
+import type { CliOptions } from './types'
 import { readFile, writeFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
@@ -8,7 +8,7 @@ import { configManager } from '../storage/config-manager'
 
 const CONFIG_FILE = join(homedir(), '.clarity', 'config.json')
 
-export async function handleConfig(options: ConfigOptions): Promise<void> {
+export async function handleConfig(options: CliOptions): Promise<void> {
   const logger = new Logger('cli:config')
 
   await configManager.initialize()
