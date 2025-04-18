@@ -332,7 +332,7 @@ export class Logger {
               }
             }
             // Handle file system errors
-            if (['ENOSPC', 'EDQUOT'].includes(error.code)) {
+            if (error?.code && ['ENOSPC', 'EDQUOT'].includes(error.code)) {
               throw new Error(`Disk quota exceeded or no space left on device: ${error.message}`)
             }
             console.error('Debug: [writeToFile] Error writing to file:', error)
