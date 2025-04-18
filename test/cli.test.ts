@@ -1,6 +1,6 @@
 import type { CAC } from 'cac'
-import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
-import { mkdir, readdir, readFile, rm, stat } from 'node:fs/promises'
+import { afterEach, beforeEach, describe, test } from 'bun:test'
+import { mkdir, readdir, rm } from 'node:fs/promises'
 import { join } from 'node:path'
 import { Logger } from '../src'
 import { createCli } from '../src/cli'
@@ -87,6 +87,7 @@ describe('CLI Tests', () => {
 
   // TODO: Fix this later
   // test('log command should create log entries', async () => {
+  //   test.skip('Skipping log command test', () => {})
   //   console.error('Debug: [log] Starting test')
 
   //   // Verify test directory exists and is writable
