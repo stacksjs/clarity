@@ -1,4 +1,4 @@
-import type { Logger } from '@stacksjs/clarity'
+import type { Logger } from '../src'
 import type { LogEntry } from '../src/types'
 import { Buffer } from 'node:buffer'
 import { readdir, readFile } from 'node:fs/promises'
