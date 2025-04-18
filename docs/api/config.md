@@ -42,7 +42,7 @@ The configuration follows the `ClarityConfig` interface, which includes:
 The default rotation configuration is:
 
 ```ts
-{
+const config = {
   frequency: 'daily',
   maxSize: 10 * 1024 * 1024, // 10MB
   maxFiles: 5,
