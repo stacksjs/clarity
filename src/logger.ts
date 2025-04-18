@@ -81,6 +81,10 @@ interface ExtendedLoggerOptions extends LoggerOptions {
   environment?: string // Environment prefix for log entries
 }
 
+interface NetworkError extends Error {
+  code?: string
+}
+
 export class Logger {
   private name: string
   private fileLocks: Map<string, number> = new Map()
@@ -233,84 +237,130 @@ export class Logger {
     // Use a custom operation tracking approach that allows us to cancel it
     const operationPromise = (async () => {
       let fd: number | undefined
-      try {
-        // Ensure storage/logs folder structure exists
+      let retries = 0
+      const maxRetries = 3
+      const backoffDelay = 1000 // Initial delay of 1 second
+
+      while (retries < maxRetries) {
         try {
-          // First check if directory exists to avoid unnecessary mkdir calls
+          // Ensure storage/logs folder structure exists
           try {
-            await access(this.config.logDirectory, constants.F_OK | constants.W_OK)
-          }
-          catch {
-            // If directory doesn't exist or isn't writable, create it
-            await mkdir(this.config.logDirectory, { recursive: true, mode: 0o755 })
-          }
-        }
-        catch (err) {
-          console.error('Debug: [writeToFile] Failed to create log directory:', err)
-          throw err
-        }
-
-        // Check if operation was cancelled
-        if (cancelled)
-          throw new Error('Operation cancelled: Logger was destroyed')
-
-        // Only encrypt if encryption is configured
-        const dataToWrite = this.validateEncryptionConfig()
-          ? (await this.encrypt(data)).encrypted
-          : Buffer.from(data)
-
-        // Write to file with proper synchronization
-        try {
-          // Create file if it doesn't exist with proper permissions
-          if (!existsSync(this.currentLogFile)) {
-            await writeFile(this.currentLogFile, '', { mode: 0o644 })
-          }
-
-          // Open file for appending with exclusive access
-          fd = openSync(this.currentLogFile, 'a', 0o644)
-
-          // Append the log entry
-          writeFileSync(fd, dataToWrite, { flag: 'a' })
-          // Force sync to ensure data is written to disk
-          fsyncSync(fd)
-
-          // Close the file descriptor before checking size
-          if (fd !== undefined) {
-            closeSync(fd)
-            fd = undefined
-          }
-
-          // Verify file exists and has content
-          const stats = await stat(this.currentLogFile)
-          if (stats.size === 0) {
-            // If file is empty, try writing directly
-            await writeFile(this.currentLogFile, dataToWrite, { flag: 'w', mode: 0o644 })
-            // Verify again
-            const retryStats = await stat(this.currentLogFile)
-            if (retryStats.size === 0) {
-              throw new Error('File exists but is empty after retry write')
-            }
-          }
-        }
-        catch (err) {
-          console.error('Debug: [writeToFile] Error writing to file:', err)
-          throw err
-        }
-        finally {
-          // Always close the file descriptor if it was opened
-          if (fd !== undefined) {
+            // First check if directory exists to avoid unnecessary mkdir calls
             try {
-              closeSync(fd)
+              await access(this.config.logDirectory, constants.F_OK | constants.W_OK)
             }
             catch (err) {
-              console.error('Debug: [writeToFile] Error closing file descriptor:', err)
+              if (err instanceof Error && 'code' in err) {
+                // Handle specific error codes
+                if (err.code === 'ENOENT') {
+                  // Directory doesn't exist
+                  await mkdir(this.config.logDirectory, { recursive: true, mode: 0o755 })
+                }
+                else if (err.code === 'EACCES') {
+                  throw new Error(`No write permission for log directory: ${this.config.logDirectory}`)
+                }
+                else {
+                  throw err
+                }
+              }
+              else {
+                throw err
+              }
+            }
+          }
+          catch (err) {
+            console.error('Debug: [writeToFile] Failed to create log directory:', err)
+            throw err
+          }
+
+          // Check if operation was cancelled
+          if (cancelled)
+            throw new Error('Operation cancelled: Logger was destroyed')
+
+          // Only encrypt if encryption is configured
+          const dataToWrite = this.validateEncryptionConfig()
+            ? (await this.encrypt(data)).encrypted
+            : Buffer.from(data)
+
+          // Write to file with proper synchronization
+          try {
+            // Create file if it doesn't exist with proper permissions
+            if (!existsSync(this.currentLogFile)) {
+              await writeFile(this.currentLogFile, '', { mode: 0o644 })
+            }
+
+            // Open file for appending with exclusive access
+            fd = openSync(this.currentLogFile, 'a', 0o644)
+
+            // Append the log entry
+            writeFileSync(fd, dataToWrite, { flag: 'a' })
+            // Force sync to ensure data is written to disk
+            fsyncSync(fd)
+
+            // Close the file descriptor before checking size
+            if (fd !== undefined) {
+              closeSync(fd)
+              fd = undefined
+            }
+
+            // Verify file exists and has content
+            const stats = await stat(this.currentLogFile)
+            if (stats.size === 0) {
+              // If file is empty, try writing directly
+              await writeFile(this.currentLogFile, dataToWrite, { flag: 'w', mode: 0o644 })
+              // Verify again
+              const retryStats = await stat(this.currentLogFile)
+              if (retryStats.size === 0) {
+                throw new Error('File exists but is empty after retry write')
+              }
+            }
+
+            // If we reach here, write was successful
+            return
+          }
+          catch (err: any) {
+            const error = err as NetworkError
+            if (error.code && ['ENETDOWN', 'ENETUNREACH', 'ENOTFOUND', 'ETIMEDOUT'].includes(error.code)) {
+              if (retries < maxRetries - 1) {
+                const errorMessage = typeof error.message === 'string' ? error.message : 'Unknown error'
+                console.error(`Network error during write attempt ${retries + 1}/${maxRetries}:`, errorMessage)
+                // Exponential backoff
+                const delay: number = backoffDelay * (2 ** retries)
+                await new Promise(resolve => setTimeout(resolve, delay))
+                retries++
+                continue
+              }
+            }
+            // Handle file system errors
+            if (['ENOSPC', 'EDQUOT'].includes(error.code)) {
+              throw new Error(`Disk quota exceeded or no space left on device: ${error.message}`)
+            }
+            console.error('Debug: [writeToFile] Error writing to file:', error)
+            throw error
+          }
+          finally {
+            // Always close the file descriptor if it was opened
+            if (fd !== undefined) {
+              try {
+                closeSync(fd)
+              }
+              catch (err) {
+                console.error('Debug: [writeToFile] Error closing file descriptor:', err)
+              }
             }
           }
         }
-      }
-      catch (err) {
-        console.error('Debug: [writeToFile] Error in writeToFile:', err)
-        throw err
+        catch (err: any) {
+          if (retries === maxRetries - 1) {
+            const error = err as Error
+            const errorMessage = typeof error.message === 'string' ? error.message : 'Unknown error'
+            console.error('Debug: [writeToFile] Max retries reached. Final error:', errorMessage)
+            throw err
+          }
+          retries++
+          const delay: number = backoffDelay * (2 ** (retries - 1))
+          await new Promise(resolve => setTimeout(resolve, delay))
+        }
       }
     })()
 
@@ -1208,7 +1258,7 @@ export class Logger {
 
       return decrypted.toString('utf8')
     }
-    catch (err) {
+    catch (err: any) {
       throw new Error(`Decryption failed: ${err instanceof Error ? err.message : String(err)}`)
     }
   }
