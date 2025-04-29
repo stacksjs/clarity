@@ -1,3 +1,24 @@
+## v0.3.9...main
+
+[compare changes](https://github.com/stacksjs/clarity/compare/v0.3.9...main)
+
+### 🩹 Fixes
+
+- Resolve typecheck issue ([ec5cbaa](https://github.com/stacksjs/clarity/commit/ec5cbaa))
+
+### 🏡 Chore
+
+- Fix lint issue ([9bb3dc2](https://github.com/stacksjs/clarity/commit/9bb3dc2))
+- Minor changes ([fc7a76e](https://github.com/stacksjs/clarity/commit/fc7a76e))
+- Minor changes ([031a5ea](https://github.com/stacksjs/clarity/commit/031a5ea))
+- Test case changes ([f6a2034](https://github.com/stacksjs/clarity/commit/f6a2034))
+- Lint fix ([7de3887](https://github.com/stacksjs/clarity/commit/7de3887))
+- Improve logger with styles ([c9d042c](https://github.com/stacksjs/clarity/commit/c9d042c))
+
+### ❤️ Contributors
+
+- Cab-mikee ([@cab-mikee](https://github.com/cab-mikee))
+
 ## v0.3.8...main
 
 [compare changes](https://github.com/stacksjs/clarity/compare/v0.3.8...main)
