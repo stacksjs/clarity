@@ -5,6 +5,9 @@
     "moduleDetection": "force",
     "module": "esnext",
     "moduleResolution": "bundler",
+    "paths": {
+      "@stacksjs/clarity": ["./src/*"]
+    },
     "resolveJsonModule": true,
     "types": ["bun"],
     "allowImportingTsExtensions": true,

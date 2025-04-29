@@ -7,48 +7,13 @@ import { join } from 'node:path'
 import process from 'node:process'
 import { pipeline } from 'node:stream/promises'
 import { createGzip } from 'node:zlib'
-
 import { config as defaultConfig } from './config'
 import { JsonFormatter } from './formatters/json'
+import { bgRed, bgYellow, blue, bold, green, styles, white } from './style'
 import { isBrowserProcess } from './utils'
 
 // Define missing types
 type BunTimer = ReturnType<typeof setTimeout>
-
-// Add terminal styling utilities
-const terminalStyles = {
-  // Text colors
-  red: (text: string) => `\x1B[31m${text}\x1B[0m`,
-  green: (text: string) => `\x1B[32m${text}\x1B[0m`,
-  yellow: (text: string) => `\x1B[33m${text}\x1B[0m`,
-  blue: (text: string) => `\x1B[34m${text}\x1B[0m`,
-  magenta: (text: string) => `\x1B[35m${text}\x1B[0m`,
-  cyan: (text: string) => `\x1B[36m${text}\x1B[0m`,
-  white: (text: string) => `\x1B[37m${text}\x1B[0m`,
-  gray: (text: string) => `\x1B[90m${text}\x1B[0m`,
-
-  // Background colors
-  bgRed: (text: string) => `\x1B[41m${text}\x1B[0m`,
-  bgYellow: (text: string) => `\x1B[43m${text}\x1B[0m`,
-
-  // Text styles
-  bold: (text: string) => `\x1B[1m${text}\x1B[0m`,
-  dim: (text: string) => `\x1B[2m${text}\x1B[0m`,
-  italic: (text: string) => `\x1B[3m${text}\x1B[0m`,
-  underline: (text: string) => `\x1B[4m${text}\x1B[0m`,
-
-  // Reset
-  reset: '\x1B[0m',
-}
-
-// Log level icons/badges similar to consola
-const levelIcons = {
-  debug: '🔍',
-  info: terminalStyles.blue('ℹ'),
-  success: terminalStyles.green('✓'),
-  warning: terminalStyles.bgYellow(terminalStyles.white(terminalStyles.bold(' WARN '))), // Use badge style for warnings
-  error: terminalStyles.bgRed(terminalStyles.white(terminalStyles.bold(' ERROR '))), // Use badge style for errors
-}
 
 interface FingersCrossedConfig {
   activationLevel: LogLevel
@@ -83,6 +48,15 @@ interface ExtendedLoggerOptions extends LoggerOptions {
 
 interface NetworkError extends Error {
   code?: string
+}
+
+// Log level icons/badges similar to consola
+const levelIcons = {
+  debug: '🔍',
+  info: blue('ℹ'),
+  success: green('✓'),
+  warning: bgYellow(white(bold(' WARN '))), // Use badge style for warnings
+  error: bgRed(white(bold(' ERROR '))), // Use badge style for errors
 }
 
 export class Logger {
@@ -857,7 +831,7 @@ export class Logger {
   }
 
   private formatConsoleTimestamp(date: Date): string {
-    return this.fancy ? terminalStyles.gray(date.toLocaleTimeString()) : date.toLocaleTimeString()
+    return this.fancy ? styles.gray(date.toLocaleTimeString()) : date.toLocaleTimeString()
   }
 
   private formatConsoleMessage(parts: { timestamp: string, icon?: string, tag?: string, message: string, level?: LogLevel, showTimestamp?: boolean }): string {
@@ -898,7 +872,7 @@ export class Logger {
     }
     else {
       // For other levels, apply standard formatting
-      mainPart = `${icon} ${tag} ${terminalStyles.cyan(message)}`
+      mainPart = `${icon} ${tag} ${styles.cyan(message)}`
     }
 
     // If we don't need to show timestamp, just return the message
@@ -957,9 +931,6 @@ export class Logger {
   }
 
   private async log(level: LogLevel, message: string | Error, ...args: any[]): Promise<void> {
-    if (!this.shouldLog(level))
-      return
-
     const timestamp = new Date()
     const consoleTime = this.formatConsoleTimestamp(timestamp)
     const fileTime = this.formatFileTimestamp(timestamp)
@@ -979,7 +950,7 @@ export class Logger {
     // Format console output
     if (this.fancy && !isBrowserProcess()) {
       const icon = levelIcons[level]
-      const tag = this.options.showTags !== false && this.name ? terminalStyles.gray(this.formatTag(this.name)) : ''
+      const tag = this.options.showTags !== false && this.name ? styles.gray(this.formatTag(this.name)) : ''
 
       // Format the console output based on log level
       let consoleMessage: string
@@ -989,7 +960,7 @@ export class Logger {
             timestamp: consoleTime,
             icon,
             tag,
-            message: terminalStyles.gray(formattedMessage),
+            message: styles.gray(formattedMessage),
             level,
           })
           console.error(consoleMessage)
@@ -1009,7 +980,7 @@ export class Logger {
             timestamp: consoleTime,
             icon,
             tag,
-            message: terminalStyles.green(formattedMessage),
+            message: styles.green(formattedMessage),
             level,
           })
           console.error(consoleMessage)
@@ -1040,7 +1011,7 @@ export class Logger {
               if (line.trim() && !line.includes(formattedMessage)) {
                 console.error(this.formatConsoleMessage({
                   timestamp: consoleTime,
-                  message: terminalStyles.gray(`  ${line}`),
+                  message: styles.gray(`  ${line}`),
                   level,
                   showTimestamp: false, // Don't show timestamp for stack traces
                 }))
@@ -1058,11 +1029,15 @@ export class Logger {
       }
     }
 
+    if (!this.shouldLog(level))
+      return
+
     // Create the log entry for file logging
     let logEntry = `${fileTime} ${this.environment}.${level.toUpperCase()}: ${formattedMessage}\n`
     if (errorStack) {
       logEntry += `${errorStack}\n`
     }
+    logEntry = logEntry.replace(this.ANSI_PATTERN, '')
 
     // Write to file
     await this.writeToFile(logEntry)
@@ -1078,13 +1053,13 @@ export class Logger {
 
     // Show start message with spinner-like indicator
     if (this.fancy && !isBrowserProcess()) {
-      const tag = this.options.showTags !== false && this.name ? terminalStyles.gray(this.formatTag(this.name)) : ''
+      const tag = this.options.showTags !== false && this.name ? styles.gray(this.formatTag(this.name)) : ''
       const consoleTime = this.formatConsoleTimestamp(new Date())
       console.error(this.formatConsoleMessage({
         timestamp: consoleTime,
-        icon: terminalStyles.blue('◐'),
+        icon: styles.blue('◐'),
         tag,
-        message: `${terminalStyles.cyan(label)}...`,
+        message: `${styles.cyan(label)}...`,
       }))
     }
 
@@ -1108,13 +1083,14 @@ export class Logger {
         logEntry += ` ${JSON.stringify(metadata)}`
       }
       logEntry += '\n'
+      logEntry = logEntry.replace(this.ANSI_PATTERN, '')
 
       // Show completion message with tag based on showTags option
       if (this.fancy && !isBrowserProcess()) {
-        const tag = this.options.showTags !== false && this.name ? terminalStyles.gray(this.formatTag(this.name)) : ''
+        const tag = this.options.showTags !== false && this.name ? styles.gray(this.formatTag(this.name)) : ''
         console.error(this.formatConsoleMessage({
           timestamp: consoleTime,
-          icon: terminalStyles.green('✓'),
+          icon: styles.green('✓'),
           tag,
           message: `${completionMessage}${metadata ? ` ${JSON.stringify(metadata)}` : ''}`,
         }))
@@ -1367,7 +1343,7 @@ export class Logger {
       if (this.options.showTags !== false && this.name) {
         console.error(this.formatConsoleMessage({
           timestamp: consoleTime,
-          message: terminalStyles.gray(this.formatTag(this.name)),
+          message: styles.gray(this.formatTag(this.name)),
           showTimestamp: false,
         }))
       }
@@ -1375,16 +1351,16 @@ export class Logger {
       // Show timestamp only on the first line of the box
       console.error(this.formatConsoleMessage({
         timestamp: consoleTime,
-        message: terminalStyles.cyan(top),
+        message: styles.cyan(top),
       }))
       boxedLines.forEach(line => console.error(this.formatConsoleMessage({
         timestamp: consoleTime,
-        message: terminalStyles.cyan(line),
+        message: styles.cyan(line),
         showTimestamp: false,
       })))
       console.error(this.formatConsoleMessage({
         timestamp: consoleTime,
-        message: terminalStyles.cyan(bottom),
+        message: styles.cyan(bottom),
         showTimestamp: false,
       }))
     }
@@ -1394,7 +1370,7 @@ export class Logger {
     }
 
     // Write directly to file instead of using this.info()
-    const logEntry = `${fileTime} ${this.environment}.INFO: [BOX] ${message}\n`
+    const logEntry = `${fileTime} ${this.environment}.INFO: [BOX] ${message}\n`.replace(this.ANSI_PATTERN, '')
     await this.writeToFile(logEntry)
   }
 
@@ -1412,7 +1388,7 @@ export class Logger {
 
     return new Promise((resolve) => {
       // Use console.error for display
-      console.error(`${terminalStyles.cyan('?')} ${message} (y/n) `)
+      console.error(`${styles.cyan('?')} ${message} (y/n) `)
 
       const onData = (data: Buffer) => {
         const input = data.toString().trim().toLowerCase()
@@ -1522,15 +1498,15 @@ export class Logger {
     // Console output with fancy formatting
     if (this.fancy && !isBrowserProcess()) {
       // Make tag optional based on showTags property and use custom format
-      const tag = this.options.showTags !== false && this.name ? terminalStyles.gray(this.formatTag(this.name)) : ''
-      const spinnerChar = terminalStyles.blue('◐')
-      console.error(`${spinnerChar} ${tag} ${terminalStyles.cyan(formattedMessage)}`)
+      const tag = this.options.showTags !== false && this.name ? styles.gray(this.formatTag(this.name)) : ''
+      const spinnerChar = styles.blue('◐')
+      console.error(`${spinnerChar} ${tag} ${styles.cyan(formattedMessage)}`)
     }
 
     // Log to file directly instead of using this.info()
     const timestamp = new Date()
     const formattedDate = timestamp.toISOString()
-    const logEntry = `[${formattedDate}] ${this.environment}.INFO: [START] ${formattedMessage}\n`
+    const logEntry = `[${formattedDate}] ${this.environment}.INFO: [START] ${formattedMessage}\n`.replace(this.ANSI_PATTERN, '')
 
     await this.writeToFile(logEntry)
   }
@@ -1634,18 +1610,18 @@ export class Logger {
     const filledLength = Math.round((barState.barLength * percent) / 100)
     const emptyLength = barState.barLength - filledLength
 
-    const filledBar = terminalStyles.green('━'.repeat(filledLength))
-    const emptyBar = terminalStyles.gray('━'.repeat(emptyLength))
+    const filledBar = styles.green('━'.repeat(filledLength))
+    const emptyBar = styles.gray('━'.repeat(emptyLength))
     const bar = `[${filledBar}${emptyBar}]`
 
     const percentageText = `${percent}%`.padStart(4)
     const messageText = barState.message ? ` ${barState.message}` : ''
 
     // Use a simpler icon for progress
-    const icon = isFinished || percent === 100 ? terminalStyles.green('✓') : terminalStyles.blue('▶')
+    const icon = isFinished || percent === 100 ? styles.green('✓') : styles.blue('▶')
 
     // Add tag if enabled
-    const tag = this.options.showTags !== false && this.name ? ` ${terminalStyles.gray(this.formatTag(this.name))}` : ''
+    const tag = this.options.showTags !== false && this.name ? ` ${styles.gray(this.formatTag(this.name))}` : ''
 
     const line = `\r${icon}${tag} ${bar} ${percentageText}${messageText}`
 
