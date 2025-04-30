@@ -1,3 +1,15 @@
+## v0.3.12...main
+
+[compare changes](https://github.com/stacksjs/clarity/compare/v0.3.12...main)
+
+### 🩹 Fixes
+
+- Resolve typecheck ([363a175](https://github.com/stacksjs/clarity/commit/363a175))
+
+### ❤️ Contributors
+
+- Cab-mikee ([@cab-mikee](https://github.com/cab-mikee))
+
 ## v0.3.11...main
 
 [compare changes](https://github.com/stacksjs/clarity/compare/v0.3.11...main)
