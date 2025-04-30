@@ -1,3 +1,4 @@
+#!/usr/bin/env bun
 import process from 'node:process'
 import { createCli } from '../src/cli/create-cli'
 

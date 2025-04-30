@@ -70,7 +70,7 @@
     "build:docs": "bun --bun vitepress build docs",
     "preview:docs": "bun --bun vitepress preview docs",
     "typecheck": "bun --bun tsc --noEmit",
-    "postinstall": "bun --bun run scripts/postinstall.ts"
+    "postinstall": "bun ./scripts/postinstall.ts"
   },
   "devDependencies": {
     "@happy-dom/global-registrator": "^17.4.6",

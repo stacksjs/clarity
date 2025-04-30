@@ -7,6 +7,14 @@ await Bun.build({
   plugins: [dts()],
 })
 
+// Build the CLI
+await Bun.build({
+  entrypoints: ['bin/cli.ts'],
+  target: 'bun',
+  outdir: './dist/bin',
+  plugins: [dts()],
+})
+
 await Bun.build({
   entrypoints: ['src/browser.ts'],
   outdir: './dist',
