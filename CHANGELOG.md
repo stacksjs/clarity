@@ -1,3 +1,15 @@
+## v0.3.13...main
+
+[compare changes](https://github.com/stacksjs/clarity/compare/v0.3.13...main)
+
+### 🏡 Chore
+
+- Add bun shebang on cli.ts ([4166a84](https://github.com/stacksjs/clarity/commit/4166a84))
+
+### ❤️ Contributors
+
+- Cab-mikee ([@cab-mikee](https://github.com/cab-mikee))
+
 ## v0.3.12...main
 
 [compare changes](https://github.com/stacksjs/clarity/compare/v0.3.12...main)
