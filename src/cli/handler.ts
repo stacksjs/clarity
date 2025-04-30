@@ -1,6 +1,6 @@
 import type { Logger } from '../logger'
 import type { LogLevel } from '../types'
-import type { CliOptions, ConfigAction, ConfigHandlers, LogOptions } from './types'
+import type { CliOptions, ConfigAction, ConfigHandlers, LogOptions } from './cli-types'
 import { createWriteStream } from 'node:fs'
 import { mkdir } from 'node:fs/promises'
 import process from 'node:process'

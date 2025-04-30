@@ -1,5 +1,5 @@
 import process from 'node:process'
-import { createCli } from '../src/cli'
+import { createCli } from '../src/cli/create-cli'
 
 async function main() {
   try {

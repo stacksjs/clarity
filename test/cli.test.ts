@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, test } from 'bun:test'
 import { mkdir, readdir, rm } from 'node:fs/promises'
 import { join } from 'node:path'
 import { Logger } from '../src'
-import { createCli } from '../src/cli'
+import { createCli } from '../src/cli/create-cli'
 
 const TEST_DIR = join(process.cwd(), 'test-logs')
 
