@@ -1,3 +1,15 @@
+## v0.3.10...main
+
+[compare changes](https://github.com/stacksjs/clarity/compare/v0.3.10...main)
+
+### 🏡 Chore
+
+- Improve clarity cli ([40b64f8](https://github.com/stacksjs/clarity/commit/40b64f8))
+
+### ❤️ Contributors
+
+- Cab-mikee ([@cab-mikee](https://github.com/cab-mikee))
+
 ## v0.3.9...main
 
 [compare changes](https://github.com/stacksjs/clarity/compare/v0.3.9...main)
