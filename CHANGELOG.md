@@ -1,3 +1,15 @@
+## v0.3.11...main
+
+[compare changes](https://github.com/stacksjs/clarity/compare/v0.3.11...main)
+
+### 🏡 Chore
+
+- Add postinstall script ([d69e005](https://github.com/stacksjs/clarity/commit/d69e005))
+
+### ❤️ Contributors
+
+- Cab-mikee ([@cab-mikee](https://github.com/cab-mikee))
+
 ## v0.3.10...main
 
 [compare changes](https://github.com/stacksjs/clarity/compare/v0.3.10...main)
