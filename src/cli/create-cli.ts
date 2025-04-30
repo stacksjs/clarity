@@ -1,6 +1,6 @@
 import type { CAC } from 'cac'
 import type { Logger } from '../logger'
-import type { CliOptions, LogOptions } from './types'
+import type { CliOptions, LogOptions } from './cli-types'
 import { cac } from 'cac'
 import { Logger as LoggerClass } from '../logger'
 import { loadConfig, saveConfig } from './config-handler'
