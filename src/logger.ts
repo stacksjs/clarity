@@ -122,17 +122,6 @@ export class Logger {
       timestamp: hasTimestamp || this.config.timestamp,
     }
 
-    // Ensure log directory exists
-    if (!this.config.logDirectory) {
-      this.config.logDirectory = defaultConfig.logDirectory
-    }
-
-    // Ensure storage/logs folder structure exists
-    if (!isBrowserProcess()) {
-      mkdir(this.config.logDirectory, { recursive: true, mode: 0o755 })
-        .catch(err => console.error('Failed to create log directory:', err))
-    }
-
     this.currentLogFile = this.generateLogFilename()
 
     this.encryptionKeys = new Map()
