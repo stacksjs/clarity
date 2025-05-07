@@ -2,12 +2,16 @@ import type { CAC } from 'cac'
 import type { Logger } from '../logger'
 import type { CliOptions, LogOptions } from './cli-types'
 import { cac } from 'cac'
+import { version } from '../../package.json'
 import { Logger as LoggerClass } from '../logger'
 import { loadConfig, saveConfig } from './config-handler'
 import { handleClear, handleConfig, handleExport, handleLog, handleSearch, handleTail, handleWatch } from './handler'
 
-export async function createCli(options: { logDirectory?: string } = {}): Promise<CAC> {
+export async function createCli(options: { logDirectory?: string } = {
+  logDirectory: 'logs',
+}): Promise<CAC> {
   const cli = cac('clarity')
+
   const logger = new LoggerClass('cli', {
     logDirectory: options.logDirectory,
     level: 'debug', // Set debug level to ensure all logs are captured
@@ -106,7 +110,7 @@ export async function createCli(options: { logDirectory?: string } = {}): Promis
     .option('--debug', 'Enable debug output')
     .option('--no-color', 'Disable colored output')
     .help()
-    .version('1.0.0')
+    .version(version)
 
   return cli
 }
