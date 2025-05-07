@@ -1,3 +1,16 @@
+## v0.3.14...main
+
+[compare changes](https://github.com/stacksjs/clarity/compare/v0.3.14...main)
+
+### 🏡 Chore
+
+- Remove auto create folder on construct ([ce2094c](https://github.com/stacksjs/clarity/commit/ce2094c))
+- Fix CLI log directory error ([220e309](https://github.com/stacksjs/clarity/commit/220e309))
+
+### ❤️ Contributors
+
+- Cab-mikee ([@cab-mikee](https://github.com/cab-mikee))
+
 ## v0.3.13...main
 
 [compare changes](https://github.com/stacksjs/clarity/compare/v0.3.13...main)
