@@ -79,7 +79,7 @@
     "@stacksjs/gitlint": "^0.1.5",
     "@types/bun": "^1.2.12",
     "bumpp": "^10.1.0",
-    "bun-git-hooks": "^0.2.15",
+    "bun-git-hooks": "^0.2.16",
     "bun-plugin-dtsx": "^0.21.12",
     "bunfig": "^0.8.5",
     "changelogen": "^0.6.1",
