@@ -4,18 +4,18 @@
     "": {
       "name": "@stacksjs/clarity",
       "devDependencies": {
-        "@happy-dom/global-registrator": "^17.4.6",
+        "@happy-dom/global-registrator": "^17.4.7",
         "@stacksjs/docs": "^0.70.23",
         "@stacksjs/eslint-config": "^4.10.2-beta.3",
         "@stacksjs/gitlint": "^0.1.5",
-        "@types/bun": "^1.2.12",
+        "@types/bun": "^1.2.13",
         "bumpp": "^10.1.0",
-        "bun-git-hooks": "^0.2.15",
+        "bun-git-hooks": "^0.2.16",
         "bun-plugin-dtsx": "^0.21.12",
         "bunfig": "^0.8.5",
         "changelogen": "^0.6.1",
         "typescript": "^5.8.3",
-        "unocss": "^66.1.0",
+        "unocss": "^66.1.1",
       },
     },
   },
@@ -753,7 +753,7 @@
 
     "bumpp": ["bumpp@10.1.0", "", { "dependencies": { "ansis": "^3.17.0", "args-tokenizer": "^0.3.0", "c12": "^3.0.2", "cac": "^6.7.14", "escalade": "^3.2.0", "jsonc-parser": "^3.3.1", "package-manager-detector": "^1.0.0", "semver": "^7.7.1", "tinyexec": "^0.3.2", "tinyglobby": "^0.2.12", "yaml": "^2.7.0" }, "bin": { "bumpp": "bin/bumpp.mjs" } }, "sha512-cM/4+kO2A2l3aDSL7tr/ALg8TWPihl1fDWHZyz55JlDmzd01Y+8Vq3YQ1ydeKDS4QFN+tKaLsVzhdDIb/cbsLQ=="],
 
-    "bun-git-hooks": ["bun-git-hooks@0.2.15", "", { "bin": { "git-hooks": "dist/bin/cli.js", "bun-git-hooks": "dist/bin/cli.js" } }, "sha512-wIXu2AlcsgvqOcG2MAEN7pvPvKi+K8ESe8xDhBp49Y8AD+yUcEcbWFhh8+/tYWOVMFVHNVjPXHcmx4xqP1zABA=="],
+    "bun-git-hooks": ["bun-git-hooks@0.2.16", "", { "bin": { "git-hooks": "dist/bin/cli.js", "bun-git-hooks": "dist/bin/cli.js" } }, "sha512-xMqVjRKnhgFJIRfGPHzhGGWMOekqWvo36VlP7v+aUMGg4Qjgk2YsdVIItpx94P5/IwKyWvwAdngXJDmhcxTz/Q=="],
 
     "bun-plugin-dtsx": ["bun-plugin-dtsx@0.21.12", "", { "dependencies": { "@stacksjs/dtsx": "^0.8.1" } }, "sha512-VqGDRoTKEnkD508k9jRlcwFoEEJXtjqLMGN+brRP4/3vH0wfLZkZiWG5jc490roZOmphrQlo5NgfFB/j71+Qtg=="],
 
