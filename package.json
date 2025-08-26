@@ -85,7 +85,7 @@
     "bumpp": "^10.1.1",
     "bun-git-hooks": "^0.2.19",
     "bun-plugin-dtsx": "^0.21.12",
-    "bunfig": "^0.10.0",
+    "bunfig": "^0.14.1",
     "changelogen": "^0.6.1",
     "typescript": "^5.8.3",
     "unocss": "^66.1.2"
