@@ -1,7 +1,7 @@
 import type { ClarityConfig } from './types'
 import { join, relative, resolve } from 'node:path'
 import process from 'node:process'
-import { loadConfig as bunfigLoadConfig } from 'bunfig'
+import { tryLoadConfig as bunfigLoadConfig } from 'bunfig'
 
 // Get project root directory (where the package.json is located)
 function getProjectRoot(filePath?: string, options: { relative?: boolean } = {}): string {
@@ -42,6 +42,7 @@ export const defaultConfig: ClarityConfig = {
     encrypt: false,
   },
   verbose: false,
+  writeToFile: false,
 }
 
 // Load config with error handling
@@ -49,15 +50,13 @@ async function loadConfig(): Promise<ClarityConfig> {
   try {
     // const isVerbose = process.env.CLARITY_VERBOSE === 'true' || defaultConfig.verbose
 
-    const loadedConfig = await bunfigLoadConfig({
-      name: 'clarity',
+    // bunfig.tryLoadConfig expects (name, options)
+    const loadedConfig = await bunfigLoadConfig('clarity', {
       defaultConfig,
       cwd: process.cwd(),
-      endpoint: '',
-      headers: {},
-    })
+    }) as Partial<ClarityConfig> | undefined
 
-    return { ...defaultConfig, ...loadedConfig }
+    return { ...defaultConfig, ...(loadedConfig || {}) }
   }
   catch {
     // If anything fails, return default config

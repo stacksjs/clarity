@@ -142,6 +142,21 @@ export class Logger {
     }
   }
 
+  private shouldActivateFingersCrossed(level: LogLevel): boolean {
+    if (!this.fingersCrossedConfig)
+      return false
+
+    const levels: Record<LogLevel, number> = {
+      debug: 0,
+      info: 1,
+      success: 2,
+      warning: 3,
+      error: 4,
+    }
+    const activation = this.fingersCrossedConfig.activationLevel ?? 'error'
+    return levels[level] >= levels[activation]
+  }
+
   private initializeFingersCrossedConfig(options: Partial<ExtendedLoggerOptions>): FingersCrossedConfig | null {
     if (!options.fingersCrossedEnabled && options.fingersCrossed) {
       return {
@@ -191,6 +206,10 @@ export class Logger {
     }
 
     return mergedOptions
+  }
+
+  private shouldWriteToFile(): boolean {
+    return !isBrowserProcess() && this.config.writeToFile === true
   }
 
   private async writeToFile(data: string): Promise<void> {
@@ -380,6 +399,9 @@ export class Logger {
   setupRotation(): void {
     if (isBrowserProcess())
       return
+    // Skip rotation entirely when file writing is disabled
+    if (!this.shouldWriteToFile())
+      return
     if (typeof this.config.rotation === 'boolean')
       return
 
@@ -545,6 +567,8 @@ export class Logger {
   private async rotateLog(): Promise<void> {
     if (isBrowserProcess())
       return
+    if (!this.shouldWriteToFile())
+      return
 
     const stats = await stat(this.currentLogFile).catch(() => null)
     if (!stats)
@@ -657,10 +681,11 @@ export class Logger {
     if (this.shouldActivateFingersCrossed(level) && !this.isActivated) {
       this.isActivated = true
 
-      // Write all buffered entries
+      // Write all buffered entries (to file only when enabled)
       for (const entry of this.logBuffer) {
         const formattedBufferedEntry = await this.formatter.format(entry)
-        await this.writeToFile(formattedBufferedEntry)
+        if (this.shouldWriteToFile())
+          await this.writeToFile(formattedBufferedEntry)
         // eslint-disable-next-line no-console
         console.log(formattedBufferedEntry)
       }
@@ -672,41 +697,11 @@ export class Logger {
 
     if (this.isActivated) {
       // Direct write when activated
-      await this.writeToFile(formattedEntry)
+      if (this.shouldWriteToFile())
+        await this.writeToFile(formattedEntry)
       // eslint-disable-next-line no-console
       console.log(formattedEntry)
     }
-    else {
-      // Buffer the entry
-      if (this.logBuffer.length >= this.fingersCrossedConfig.bufferSize)
-        this.logBuffer.shift() // Remove oldest entry
-
-      const entry: LogEntry = {
-        timestamp: new Date(),
-        level,
-        message: formattedEntry,
-        name: this.name,
-      }
-      this.logBuffer.push(entry)
-    }
-  }
-
-  private shouldActivateFingersCrossed(level: LogLevel): boolean {
-    if (!this.fingersCrossedConfig)
-      return false
-
-    return this.getLevelValue(level) >= this.getLevelValue(this.fingersCrossedConfig.activationLevel)
-  }
-
-  private getLevelValue(level: LogLevel): number {
-    const levels: Record<LogLevel, number> = {
-      debug: 0,
-      info: 1,
-      success: 2,
-      warning: 3,
-      error: 4,
-    }
-    return levels[level]
   }
 
   private shouldLog(level: LogLevel): boolean {
@@ -1028,8 +1023,9 @@ export class Logger {
     }
     logEntry = logEntry.replace(this.ANSI_PATTERN, '')
 
-    // Write to file
-    await this.writeToFile(logEntry)
+    // Write to file only when enabled
+    if (this.shouldWriteToFile())
+      await this.writeToFile(logEntry)
   }
 
   /**
@@ -1090,7 +1086,8 @@ export class Logger {
       }
 
       // Write directly to file instead of using this.info()
-      await this.writeToFile(logEntry)
+      if (this.shouldWriteToFile())
+        await this.writeToFile(logEntry)
     }
   }
 
@@ -1360,7 +1357,8 @@ export class Logger {
 
     // Write directly to file instead of using this.info()
     const logEntry = `${fileTime} ${this.environment}.INFO: [BOX] ${message}\n`.replace(this.ANSI_PATTERN, '')
-    await this.writeToFile(logEntry)
+    if (this.shouldWriteToFile())
+      await this.writeToFile(logEntry)
   }
 
   /**

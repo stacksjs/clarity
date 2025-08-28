@@ -36,6 +36,7 @@ The configuration follows the `ClarityConfig` interface, which includes:
 | `logDirectory` | `string` | `'<project_root>/logs'` | Directory where logs are stored |
 | `rotation` | `boolean` \| `RotationConfig` | See below | Log rotation settings |
 | `verbose` | `boolean` | `false` | Whether to enable verbose output |
+| `writeToFile` | `boolean` | `false` | If `true`, logs are written to disk. If `false`, logs are console-only |
 
 ### Default Rotation Configuration
 

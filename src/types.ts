@@ -115,6 +115,12 @@ export interface ClarityConfig {
    * @default false
    */
   verbose: boolean
+
+  /**
+   * Write logs to file system in addition to console output
+   * @default false
+   */
+  writeToFile?: boolean
 }
 
 export type ClarityOptions = Partial<ClarityConfig>
@@ -130,6 +136,10 @@ export interface LoggerOptions {
   format?: 'json' | 'text'
   rotation?: RotationConfig
   timestamp?: string | number | Date
+  /**
+   * When true, logs are written to files; when false, logs are console-only
+   */
+  writeToFile?: boolean
   fingersCrossed?: boolean | {
     activationLevel?: LogLevel
     bufferSize?: number
