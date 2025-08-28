@@ -1,7 +1,7 @@
 {
   "name": "@stacksjs/clarity",
   "type": "module",
-  "version": "0.3.15",
+  "version": "0.3.16",
   "description": "A modern logging & debugging utility. For browser & server.",
   "author": "Chris Breuer <chris@stacksjs.org>",
   "license": "MIT",
@@ -42,7 +42,10 @@
   "bin": {
     "clarity": "./dist/bin/cli.js"
   },
-  "files": ["README.md", "dist"],
+  "files": [
+    "README.md",
+    "dist"
+  ],
   "scripts": {
     "build": "bun --bun build.ts && bun run compile",
     "compile": "bun build ./bin/cli.ts --compile --minify --outfile bin/clarity",
@@ -74,10 +77,10 @@
     "postinstall": "bunx git-hooks && bun ./scripts/postinstall.ts"
   },
   "devDependencies": {
-    "@happy-dom/global-registrator": "^17.4.7",
+    "@happy-dom/global-registrator": "^18.0.1",
     "@stacksjs/bumpx": "^0.1.17",
     "@stacksjs/docs": "^0.70.23",
-    "@stacksjs/eslint-config": "^4.10.2-beta.3",
+    "@stacksjs/eslint-config": "^4.14.0-beta.3",
     "@stacksjs/gitlint": "^0.1.5",
     "@stacksjs/logsmith": "^0.1.8",
     "@types/bun": "^1.2.13",
