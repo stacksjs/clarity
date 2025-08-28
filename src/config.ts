@@ -1,7 +1,7 @@
 import type { ClarityConfig } from './types'
 import { join, relative, resolve } from 'node:path'
 import process from 'node:process'
-import { tryLoadConfig as bunfigLoadConfig } from 'bunfig'
+import { loadConfig as bunfigLoadConfig } from 'bunfig'
 
 // Get project root directory (where the package.json is located)
 function getProjectRoot(filePath?: string, options: { relative?: boolean } = {}): string {
