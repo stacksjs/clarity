@@ -1,3 +1,11 @@
+[Compare changes](https://github.com/stacksjs/clarity/compare/v0.3.14...HEAD)
+
+### Contributors
+
+- Adelino Ngomacha <adelinob335@gmail.com>
+- cab-mikee <mike.cabz32@gmail.com>
+- renovate[bot] <29139614+renovate[bot]@users.noreply.github.com>
+
 ## v0.3.14...main
 
 [compare changes](https://github.com/stacksjs/clarity/compare/v0.3.14...main)
