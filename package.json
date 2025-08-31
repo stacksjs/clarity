@@ -91,7 +91,7 @@
     "bunfig": "^0.10.0",
     "changelogen": "^0.6.2",
     "typescript": "^5.9.2",
-    "unocss": "^66.4.2"
+    "unocss": "^66.5.0"
   },
   "overrides": {
     "unconfig": "0.3.10"
