@@ -22,7 +22,7 @@ const nav = [
   { text: 'News', link: 'https://stacksjs.org/news' },
   {
     text: 'Changelog',
-    link: 'https://github.com/stacksjs/clairty/blob/main/CHANGELOG.md',
+    link: 'https://github.com/stacksjs/clarity/blob/main/CHANGELOG.md',
   },
   {
     text: 'Resources',
@@ -92,7 +92,7 @@ const sidebar = [
       { text: 'Utils', link: '/api/utils' },
     ],
   },
-  { text: 'Showcase', link: '/Showcase' },
+  { text: 'Showcase', link: '/showcase' },
 ]
 const description = 'Modern debugging & logging library. For server & browser.'
 const title = 'clarity | Modern debugging & logging library. For server & browser.'
@@ -107,8 +107,8 @@ export default withPwa(
     lastUpdated: true,
 
     head: [
-      ['link', { rel: 'icon', type: 'image/svg+xml', href: './images/logo-mini.svg' }],
-      ['link', { rel: 'icon', type: 'image/png', href: './images/logo.png' }],
+      ['link', { rel: 'icon', type: 'image/svg+xml', href: '/images/logo-mini.svg' }],
+      ['link', { rel: 'icon', type: 'image/png', href: '/images/logo.png' }],
       ['meta', { name: 'theme-color', content: '#0A0ABC' }],
       ['meta', { name: 'title', content: title }],
       ['meta', { name: 'description', content: description }],
@@ -124,7 +124,7 @@ export default withPwa(
       ['meta', { property: 'og:description', content: description }],
 
       ['meta', { property: 'og:site_name', content: 'clarity' }],
-      ['meta', { property: 'og:image', content: './images/og-image.png' }],
+      ['meta', { property: 'og:image', content: '/images/og-image.png' }],
       ['meta', { property: 'og:url', content: 'https://stacks-clarity.netlify.app' }],
       ...analyticsHead,
     ],
@@ -140,9 +140,10 @@ export default withPwa(
 
       nav,
       sidebar,
+      outline: 'deep',
 
       editLink: {
-        pattern: 'https://github.com/stacksjs/stacks/edit/main/docs/docs/:path',
+        pattern: 'https://github.com/stacksjs/clarity/edit/main/docs/:path',
         text: 'Edit this page on GitHub',
       },
 
@@ -181,6 +182,7 @@ export default withPwa(
       codeTransformers: [
         transformerTwoslash(),
       ],
+      lineNumbers: true,
     },
 
     vite: viteConfig,
