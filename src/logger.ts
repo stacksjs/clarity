@@ -6,7 +6,7 @@ import { access, constants, mkdir, readdir, rename, stat, unlink, writeFile } fr
 import { isAbsolute, join, resolve } from 'node:path'
 import process from 'node:process'
 import { pipeline } from 'node:stream/promises'
-import { createGzip } from 'node:zlib'
+import { createGunzip, createGzip } from 'node:zlib'
 import { config as defaultConfig } from './config'
 import { JsonFormatter } from './formatters/json'
 import { bgRed, bgYellow, blue, bold, green, styles, white } from './style'
@@ -261,7 +261,7 @@ export class Logger {
 
           // Only encrypt if encryption is configured
           const dataToWrite = this.validateEncryptionConfig()
-            ? (await this.encrypt(data)).encrypted
+            ? await this.encrypt(data)
             : Buffer.from(data)
 
           // Write to file with proper synchronization
@@ -511,21 +511,82 @@ export class Logger {
     return { key, id: this.currentKeyId }
   }
 
-  private encrypt(data: string): { encrypted: Buffer, iv: Buffer } {
-    const { key } = this.getCurrentKey()
-    const iv = randomBytes(16)
-    const cipher = createCipheriv('aes-256-gcm', key, iv)
-    const encrypted = Buffer.concat([
-      cipher.update(data, 'utf8'),
-      cipher.final(),
-    ])
-    const authTag = cipher.getAuthTag()
-
-    // Return encrypted data with IV and auth tag
-    return {
-      encrypted: Buffer.concat([iv, encrypted, authTag]),
-      iv,
+  // Map algorithm string to a compact byte code for header
+  private getAlgorithmCode(alg: string): number {
+    switch (alg) {
+      case 'aes-256-gcm': return 1
+      case 'aes-256-cbc': return 2
+      default: return 255 // unknown
     }
+  }
+
+  private getAlgorithmFromCode(code: number): 'aes-256-gcm' | 'aes-256-cbc' | 'unknown' {
+    switch (code) {
+      case 1: return 'aes-256-gcm'
+      case 2: return 'aes-256-cbc'
+      default: return 'unknown'
+    }
+  }
+
+  private async decompressData(data: Buffer): Promise<Buffer> {
+    return new Promise((resolve, reject) => {
+      const gunzip = createGunzip()
+      const chunks: Uint8Array[] = []
+      gunzip.on('data', chunk => chunks.push(chunk))
+      gunzip.on('end', () => resolve(Buffer.from(Buffer.concat(chunks))))
+      gunzip.on('error', reject)
+      gunzip.end(data)
+    })
+  }
+
+  private async encrypt(data: string): Promise<Buffer> {
+    const { key, id: keyId } = this.getCurrentKey()
+    const encOpts = this.getEncryptionOptions()
+    const algorithm = (encOpts.algorithm === 'aes-256-cbc' || encOpts.algorithm === 'aes-256-gcm')
+      ? encOpts.algorithm
+      : 'aes-256-gcm' // default
+
+    // Optional compression before encryption
+    const inputBuf = Buffer.from(data, 'utf8')
+    const payload = encOpts.compress ? await this.compressData(inputBuf) : inputBuf
+
+    // IV length: 12 for GCM (common), 16 for CBC
+    const ivLength = algorithm === 'aes-256-gcm' ? 12 : 16
+    const iv = randomBytes(ivLength)
+    const cipher = createCipheriv(algorithm, key, iv)
+    const ciphertext = Buffer.concat([cipher.update(payload), cipher.final()])
+
+    // Auth tag for GCM
+    const authTag = algorithm === 'aes-256-gcm' ? (cipher as any).getAuthTag() as Buffer : Buffer.alloc(0)
+
+    // Header format:
+    // [0-3]  Magic 'CLRY'
+    // [4]    Version (1)
+    // [5]    Algorithm code (1=gcm,2=cbc,255=unknown)
+    // [6]    Flags bitmask (bit0: compressed)
+    // [7]    keyId length (K)
+    // [8..]  keyId (utf8)
+    // [..]   iv length (1)
+    // [..]   iv
+    // [..]   tag length (1)
+    // [..]   authTag (if any)
+    // [..]   ciphertext
+    const magic = Buffer.from('CLRY')
+    const version = Buffer.from([1])
+    const algCode = Buffer.from([this.getAlgorithmCode(algorithm)])
+    const flags = Buffer.from([encOpts.compress ? 1 : 0])
+    const keyIdBuf = Buffer.from(keyId, 'utf8')
+    const keyIdLen = Buffer.from([keyIdBuf.length])
+    const ivLenBuf = Buffer.from([iv.length])
+    const tagLenBuf = Buffer.from([authTag.length])
+
+    return Buffer.concat([
+      magic, version, algCode, flags,
+      keyIdLen, keyIdBuf,
+      ivLenBuf, iv,
+      tagLenBuf, authTag,
+      ciphertext,
+    ])
   }
 
   async compressData(data: Buffer): Promise<Buffer> {
@@ -1321,36 +1382,91 @@ export class Logger {
     if (!this.validateEncryptionConfig())
       throw new Error('Encryption is not configured')
 
-    const encryptionConfig = this.config.rotation as RotationConfig
-    if (!encryptionConfig.encrypt || typeof encryptionConfig.encrypt === 'boolean')
-      throw new Error('Invalid encryption configuration')
+    // Convert input to buffer if it's a string
+    const buf = Buffer.isBuffer(data) ? data : Buffer.from(data, 'base64')
 
-    // Use the current key for decryption
-    if (!this.currentKeyId || !this.keys.has(this.currentKeyId))
-      throw new Error('No valid encryption key available')
+    // Parse header
+    if (buf.length < 8)
+      throw new Error('Invalid encrypted payload: too short')
 
-    const key = this.keys.get(this.currentKeyId)!
+    const magic = buf.slice(0, 4).toString('utf8')
+    if (magic !== 'CLRY') {
+      // Legacy format fallback: [iv(16)][ciphertext][authTag(16)] using aes-256-gcm
+      if (buf.length < 16 + 16)
+        throw new Error('Invalid encrypted payload: too short (legacy)')
+
+      if (!this.currentKeyId || !this.keys.has(this.currentKeyId))
+        throw new Error('No valid encryption key available for legacy payload')
+
+      const keyLegacy = this.keys.get(this.currentKeyId)!
+      const ivLegacy = buf.slice(0, 16)
+      const authTagLegacy = buf.slice(-16)
+      const ciphertextLegacy = buf.slice(16, -16)
+
+      try {
+        const decipherLegacy = createDecipheriv('aes-256-gcm', keyLegacy, ivLegacy)
+        ;(decipherLegacy as any).setAuthTag(authTagLegacy)
+        const plainLegacy = Buffer.concat([decipherLegacy.update(ciphertextLegacy), decipherLegacy.final()])
+        return plainLegacy.toString('utf8')
+      }
+      catch (err: any) {
+        throw new Error(`Decryption failed (legacy): ${err instanceof Error ? err.message : String(err)}`)
+      }
+    }
+
+    let offset = 4
+    const version = buf.readUInt8(offset)
+    offset += 1
+    if (version !== 1)
+      throw new Error(`Unsupported encrypted payload version: ${version}`)
+
+    const algCode = buf.readUInt8(offset)
+    offset += 1
+    const flags = buf.readUInt8(offset)
+    offset += 1
+    const compressed = (flags & 1) === 1
+
+    const keyIdLen = buf.readUInt8(offset)
+    offset += 1
+    if (buf.length < offset + keyIdLen)
+      throw new Error('Invalid encrypted payload: truncated keyId')
+    const keyId = buf.slice(offset, offset + keyIdLen).toString('utf8')
+    offset += keyIdLen
+
+    const ivLen = buf.readUInt8(offset)
+    offset += 1
+    if (buf.length < offset + ivLen)
+      throw new Error('Invalid encrypted payload: truncated iv')
+    const iv = buf.slice(offset, offset + ivLen)
+    offset += ivLen
+
+    const tagLen = buf.readUInt8(offset)
+    offset += 1
+    if (buf.length < offset + tagLen)
+      throw new Error('Invalid encrypted payload: truncated auth tag')
+    const authTag = tagLen > 0 ? buf.slice(offset, offset + tagLen) : Buffer.alloc(0)
+    offset += tagLen
+
+    const ciphertext = buf.slice(offset)
+
+    // Find key by ID
+    const key = this.keys.get(keyId)
+    if (!key)
+      throw new Error('No encryption key found for payload')
+
+    const algorithm = this.getAlgorithmFromCode(algCode)
+    if (algorithm === 'unknown')
+      throw new Error('Unsupported encryption algorithm in payload')
 
     try {
-      // Convert input to buffer if it's a string
-      const encryptedData = Buffer.isBuffer(data) ? data : Buffer.from(data, 'base64')
+      const decipher = createDecipheriv(algorithm, key, iv)
+      if (algorithm === 'aes-256-gcm' && authTag.length > 0)
+        (decipher as any).setAuthTag(authTag)
 
-      // Extract IV (16 bytes), auth tag (16 bytes), and ciphertext
-      const iv = encryptedData.slice(0, 16)
-      const authTag = encryptedData.slice(-16)
-      const ciphertext = encryptedData.slice(16, -16)
+      const plain = Buffer.concat([decipher.update(ciphertext), decipher.final()])
 
-      // Create decipher with correct method
-      const decipher = createDecipheriv('aes-256-gcm', key, iv)
-      decipher.setAuthTag(authTag)
-
-      // Decrypt
-      const decrypted = Buffer.concat([
-        decipher.update(ciphertext),
-        decipher.final(),
-      ])
-
-      return decrypted.toString('utf8')
+      const output = compressed ? await this.decompressData(plain) : plain
+      return output.toString('utf8')
     }
     catch (err: any) {
       throw new Error(`Decryption failed: ${err instanceof Error ? err.message : String(err)}`)
