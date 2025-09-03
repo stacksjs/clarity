@@ -3,7 +3,7 @@ import { Buffer } from 'node:buffer'
 import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto'
 import { closeSync, createReadStream, createWriteStream, existsSync, fsyncSync, openSync, writeFileSync } from 'node:fs'
 import { access, constants, mkdir, readdir, rename, stat, unlink, writeFile } from 'node:fs/promises'
-import { join } from 'node:path'
+import { isAbsolute, join, resolve } from 'node:path'
 import process from 'node:process'
 import { pipeline } from 'node:stream/promises'
 import { createGzip } from 'node:zlib'
@@ -815,7 +815,24 @@ export class Logger {
   }
 
   private formatConsoleTimestamp(date: Date): string {
-    return this.fancy ? styles.gray(date.toLocaleTimeString()) : date.toLocaleTimeString()
+    return this.shouldStyleConsole() ? styles.gray(date.toLocaleTimeString()) : date.toLocaleTimeString()
+  }
+
+  private shouldStyleConsole(): boolean {
+    if (!this.fancy || isBrowserProcess())
+      return false
+
+    // Respect standard color env vars
+    const noColor = typeof process.env.NO_COLOR !== 'undefined'
+    const forceColorDisabled = process.env.FORCE_COLOR === '0'
+    if (noColor || forceColorDisabled)
+      return false
+
+    // Only style when attached to a real terminal
+    const hasTTY = (typeof process.stderr !== 'undefined' && (process.stderr as any).isTTY)
+      || (typeof process.stdout !== 'undefined' && (process.stdout as any).isTTY)
+
+    return !!hasTTY
   }
 
   private formatConsoleMessage(parts: { timestamp: string, icon?: string, tag?: string, message: string, level?: LogLevel, showTimestamp?: boolean }): string {
@@ -914,6 +931,118 @@ export class Logger {
     return formattedMessage
   }
 
+  private formatMarkdown(input: string): string {
+    if (!input)
+      return input
+
+    let out = input
+
+    // Links: [text](url)
+    // - If URL is a local file path and exists: make clickable file:// link (OSC 8)
+    // - Else if terminal supports hyperlinks: make clickable http(s) link (OSC 8)
+    // - Else: show styled title only (no URL shown in console)
+    out = out.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_: string, text: string, url: string) => {
+      const label = styles.underline(styles.blue(text))
+
+      const absFile = this.toAbsoluteFilePath(url)
+      if (absFile && this.shouldStyleConsole() && this.supportsHyperlinks()) {
+        const href = `file://${encodeURI(absFile)}`
+        const OSC = '\u001B]8;;'
+        const ST = '\u001B\\' // String Terminator
+        return `${OSC}${href}${ST}${label}${OSC}${ST}`
+      }
+
+      if (this.shouldStyleConsole() && this.supportsHyperlinks()) {
+        const OSC = '\u001B]8;;'
+        const ST = '\u001B\\' // String Terminator
+        return `${OSC}${url}${ST}${label}${OSC}${ST}`
+      }
+
+      return label
+    })
+
+    // Inline code: `code` (use gray background)
+    out = out.replace(/`([^`]+)`/g, (_, m: string) => styles.bgGray(m))
+
+    // Bold: **text**
+    out = out.replace(/\*\*([^*]+)\*\*/g, (_, m: string) => styles.bold(m))
+
+    // Italic: *text* (avoid matching **bold**)
+    out = out.replace(/(?<!\*)\*([^*]+)\*(?!\*)/g, (_, m: string) => styles.italic(m))
+
+    // Italic with underscores: _text_
+    out = out.replace(/(?<!_)_([^_]+)_(?!_)/g, (_, m: string) => styles.italic(m))
+
+    // Strikethrough: ~text~
+    out = out.replace(/~([^~]+)~/g, (_, m: string) => styles.strikethrough(m))
+
+    return out
+  }
+
+  // Detect basic terminal hyperlink support (OSC 8)
+  private supportsHyperlinks(): boolean {
+    if (isBrowserProcess())
+      return false
+
+    const env = process.env
+    if (!env)
+      return false
+
+    // Known terminals
+    if (env.TERM_PROGRAM === 'iTerm.app' || env.TERM_PROGRAM === 'vscode' || env.TERM_PROGRAM === 'WezTerm')
+      return true
+    if (env.WT_SESSION)
+      return true // Windows Terminal
+    if (env.TERM === 'xterm-kitty')
+      return true // kitty
+
+    // VTE-based terminals (>= 0.50)
+    const vte = env.VTE_VERSION ? Number.parseInt(env.VTE_VERSION, 10) : 0
+    if (!Number.isNaN(vte) && vte >= 5000)
+      return true
+
+    return false
+  }
+
+  // Resolve URL-like input to an absolute file path if it points to a local file that exists
+  private toAbsoluteFilePath(input: string): string | null {
+    try {
+      let p = input
+      // Strip file:// if present
+      if (p.startsWith('file://')) {
+        p = p.replace(/^file:\/\//, '')
+      }
+
+      // Expand ~ to home
+      if (p.startsWith('~')) {
+        const home = process.env.HOME || ''
+        if (home)
+          p = p.replace(/^~(?=$|\/)/, home)
+      }
+
+      // If absolute or looks relative, resolve to absolute
+      if (isAbsolute(p) || p.startsWith('./') || p.startsWith('../')) {
+        p = resolve(p)
+      }
+      else {
+        // Not a definite local path; skip
+        return null
+      }
+
+      return existsSync(p) ? p : null
+    }
+    catch {
+      return null
+    }
+  }
+
+  // Build console and file variants of a message
+  private buildOutputTexts(input: string): { consoleText: string, fileText: string } {
+    const consoleText = this.shouldStyleConsole() ? this.formatMarkdown(input) : input
+    const fileText = input.replace(this.ANSI_PATTERN, '')
+    return { consoleText, fileText }
+  }
+
   private async log(level: LogLevel, message: string | Error, ...args: any[]): Promise<void> {
     const timestamp = new Date()
     const consoleTime = this.formatConsoleTimestamp(timestamp)
@@ -931,8 +1060,11 @@ export class Logger {
       formattedMessage = this.formatMessage(message, args)
     }
 
+    // Precompute console/file variants
+    const { consoleText: baseConsoleText, fileText } = this.buildOutputTexts(formattedMessage)
+
     // Format console output
-    if (this.fancy && !isBrowserProcess()) {
+    if (this.shouldStyleConsole()) {
       const icon = levelIcons[level]
       const tag = this.options.showTags !== false && this.name ? styles.gray(this.formatTag(this.name)) : ''
 
@@ -944,7 +1076,7 @@ export class Logger {
             timestamp: consoleTime,
             icon,
             tag,
-            message: styles.gray(formattedMessage),
+            message: styles.gray(baseConsoleText),
             level,
           })
           console.error(consoleMessage)
@@ -954,7 +1086,7 @@ export class Logger {
             timestamp: consoleTime,
             icon,
             tag,
-            message: formattedMessage,
+            message: baseConsoleText,
             level,
           })
           console.error(consoleMessage)
@@ -964,7 +1096,7 @@ export class Logger {
             timestamp: consoleTime,
             icon,
             tag,
-            message: styles.green(formattedMessage),
+            message: styles.green(baseConsoleText),
             level,
           })
           console.error(consoleMessage)
@@ -974,7 +1106,7 @@ export class Logger {
             timestamp: consoleTime,
             icon,
             tag,
-            message: formattedMessage,
+            message: baseConsoleText,
             level,
           })
           console.warn(consoleMessage)
@@ -984,7 +1116,7 @@ export class Logger {
             timestamp: consoleTime,
             icon,
             tag,
-            message: formattedMessage,
+            message: baseConsoleText,
             level,
           })
           console.error(consoleMessage)
@@ -1017,7 +1149,7 @@ export class Logger {
       return
 
     // Create the log entry for file logging
-    let logEntry = `${fileTime} ${this.environment}.${level.toUpperCase()}: ${formattedMessage}\n`
+    let logEntry = `${fileTime} ${this.environment}.${level.toUpperCase()}: ${fileText}\n`
     if (errorStack) {
       logEntry += `${errorStack}\n`
     }
@@ -1037,7 +1169,7 @@ export class Logger {
     const start = performance.now()
 
     // Show start message with spinner-like indicator
-    if (this.fancy && !isBrowserProcess()) {
+    if (this.shouldStyleConsole()) {
       const tag = this.options.showTags !== false && this.name ? styles.gray(this.formatTag(this.name)) : ''
       const consoleTime = this.formatConsoleTimestamp(new Date())
       console.error(this.formatConsoleMessage({
@@ -1071,7 +1203,7 @@ export class Logger {
       logEntry = logEntry.replace(this.ANSI_PATTERN, '')
 
       // Show completion message with tag based on showTags option
-      if (this.fancy && !isBrowserProcess()) {
+      if (this.shouldStyleConsole()) {
         const tag = this.options.showTags !== false && this.name ? styles.gray(this.formatTag(this.name)) : ''
         console.error(this.formatConsoleMessage({
           timestamp: consoleTime,
@@ -1313,37 +1445,31 @@ export class Logger {
     const consoleTime = this.formatConsoleTimestamp(timestamp)
     const fileTime = this.formatFileTimestamp(timestamp)
 
-    if (this.fancy && !isBrowserProcess()) {
-      const lines = message.split('\n')
+    const { consoleText, fileText } = this.buildOutputTexts(message)
+
+    if (this.shouldStyleConsole()) {
+      const lines = consoleText.split('\n')
       const width = Math.max(...lines.map(line => line.length)) + 2
 
       const top = `┌${'─'.repeat(width)}┐`
       const bottom = `└${'─'.repeat(width)}┘`
 
       const boxedLines = lines.map((line) => {
-        const padding = ' '.repeat(width - line.length - 2)
-        return `│ ${line}${padding} │`
+        return this.formatConsoleMessage({
+          timestamp: consoleTime,
+          message: styles.cyan(line),
+          showTimestamp: false,
+        })
       })
 
-      // Add tag before the box if showTags is enabled
-      if (this.options.showTags !== false && this.name) {
-        console.error(this.formatConsoleMessage({
-          timestamp: consoleTime,
-          message: styles.gray(this.formatTag(this.name)),
-          showTimestamp: false,
-        }))
-      }
-
-      // Show timestamp only on the first line of the box
       console.error(this.formatConsoleMessage({
         timestamp: consoleTime,
         message: styles.cyan(top),
-      }))
-      boxedLines.forEach(line => console.error(this.formatConsoleMessage({
-        timestamp: consoleTime,
-        message: styles.cyan(line),
         showTimestamp: false,
-      })))
+      }))
+
+      boxedLines.forEach(line => console.error(line))
+
       console.error(this.formatConsoleMessage({
         timestamp: consoleTime,
         message: styles.cyan(bottom),
@@ -1352,11 +1478,11 @@ export class Logger {
     }
     else if (!isBrowserProcess()) {
       // Simple console output without styling
-      console.error(`${fileTime} ${this.environment}.INFO: [BOX] ${message}`)
+      console.error(`${fileTime} ${this.environment}.INFO: [BOX] ${fileText}`)
     }
 
     // Write directly to file instead of using this.info()
-    const logEntry = `${fileTime} ${this.environment}.INFO: [BOX] ${message}\n`.replace(this.ANSI_PATTERN, '')
+    const logEntry = `${fileTime} ${this.environment}.INFO: [BOX] ${fileText}\n`.replace(this.ANSI_PATTERN, '')
     if (this.shouldWriteToFile())
       await this.writeToFile(logEntry)
   }
@@ -1368,26 +1494,26 @@ export class Logger {
    */
   async prompt(message: string): Promise<boolean> {
     if (isBrowserProcess()) {
-      // We can't use window.confirm with our linter rules
-      // Fallback to just returning true
+    // We can't use window.confirm with our linter rules
+    // Fallback to just returning true
       return Promise.resolve(true)
     }
 
     return new Promise((resolve) => {
-      // Use console.error for display
+    // Use console.error for display
       console.error(`${styles.cyan('?')} ${message} (y/n) `)
 
       const onData = (data: Buffer) => {
         const input = data.toString().trim().toLowerCase()
         process.stdin.removeListener('data', onData)
         try {
-          // Check if setRawMode is available (not available in all environments)
+        // Check if setRawMode is available (not available in all environments)
           if (typeof process.stdin.setRawMode === 'function') {
             process.stdin.setRawMode(false)
           }
         }
         catch {
-          // Ignore errors with setRawMode
+        // Ignore errors with setRawMode
         }
         process.stdin.pause()
 
@@ -1396,13 +1522,13 @@ export class Logger {
       }
 
       try {
-        // Check if setRawMode is available
+      // Check if setRawMode is available
         if (typeof process.stdin.setRawMode === 'function') {
           process.stdin.setRawMode(true)
         }
       }
       catch {
-        // Ignore errors with setRawMode
+      // Ignore errors with setRawMode
       }
       process.stdin.resume()
       process.stdin.once('data', onData)
@@ -1451,7 +1577,7 @@ export class Logger {
     // Format arguments if provided
     let formattedMessage = message
     if (args && args.length > 0) {
-      // Format string if needed (reusing similar code from log method)
+    // Format string if needed (reusing similar code from log method)
       const formatRegex = /%([sdijfo%])/g
       let argIndex = 0
       formattedMessage = message.replace(formatRegex, (match, type) => {
@@ -1482,107 +1608,22 @@ export class Logger {
       }
     }
 
-    // Console output with fancy formatting
-    if (this.fancy && !isBrowserProcess()) {
-      // Make tag optional based on showTags property and use custom format
+    const { consoleText, fileText } = this.buildOutputTexts(formattedMessage)
+
+    if (this.shouldStyleConsole()) {
+    // Make tag optional based on showTags property and use custom format
       const tag = this.options.showTags !== false && this.name ? styles.gray(this.formatTag(this.name)) : ''
       const spinnerChar = styles.blue('◐')
-      console.error(`${spinnerChar} ${tag} ${styles.cyan(formattedMessage)}`)
+      console.error(`${spinnerChar} ${tag} ${styles.cyan(consoleText)}`)
     }
 
     // Log to file directly instead of using this.info()
     const timestamp = new Date()
     const formattedDate = timestamp.toISOString()
-    const logEntry = `[${formattedDate}] ${this.environment}.INFO: [START] ${formattedMessage}\n`.replace(this.ANSI_PATTERN, '')
+    const logEntry = `[${formattedDate}] ${this.environment}.INFO: [START] ${fileText}\n`.replace(this.ANSI_PATTERN, '')
 
-    await this.writeToFile(logEntry)
-  }
-
-  /**
-   * Create and manage a dynamic progress bar in the console.
-   * Only works in Node.js environments with fancy mode enabled.
-   * @param total The total number of steps for the progress bar.
-   * @param initialMessage An optional initial message to display.
-   * @returns An object with `update`, `finish`, and `interrupt` methods to control the progress bar.
-   */
-  progress(total: number, initialMessage: string = ''): {
-    update: (current: number, message?: string) => void
-    finish: (message?: string) => void
-    interrupt: (message: string, level?: LogLevel) => void
-  } {
-    if (!this.enabled || !this.fancy || isBrowserProcess() || total <= 0) {
-      // Return no-op functions if not applicable
-      return {
-        update: () => {},
-        finish: () => {},
-        interrupt: () => {},
-      }
-    }
-
-    // Ensure only one progress bar is active at a time per logger instance
-    if (this.activeProgressBar) {
-      console.warn('Warning: Another progress bar is already active. Finishing the previous one.')
-      this.finishProgressBar(this.activeProgressBar, '[Auto-finished]')
-    }
-
-    const barLength = 20 // Length of the progress bar visualization
-    this.activeProgressBar = {
-      total,
-      current: 0,
-      message: initialMessage,
-      barLength,
-      lastRenderedLine: '',
-    }
-
-    // Initial render
-    this.renderProgressBar(this.activeProgressBar)
-
-    const update = (current: number, message?: string): void => {
-      if (!this.activeProgressBar || !this.enabled || !this.fancy || isBrowserProcess())
-        return
-      this.activeProgressBar.current = Math.max(0, Math.min(total, current))
-      if (message !== undefined) {
-        this.activeProgressBar.message = message
-      }
-
-      const isFinished = this.activeProgressBar.current === this.activeProgressBar.total
-      this.renderProgressBar(this.activeProgressBar, isFinished)
-    }
-
-    const finish = (message?: string): void => {
-      if (!this.activeProgressBar || !this.enabled || !this.fancy || isBrowserProcess())
-        return
-      // Ensure final state is 100%
-      this.activeProgressBar.current = this.activeProgressBar.total
-      if (message !== undefined) {
-        this.activeProgressBar.message = message
-      }
-      this.renderProgressBar(this.activeProgressBar, true) // Render final state
-      this.finishProgressBar(this.activeProgressBar)
-    }
-
-    const interrupt = (interruptMessage: string, level: LogLevel = 'info'): void => {
-      if (!this.activeProgressBar || !this.enabled || !this.fancy || isBrowserProcess())
-        return
-
-      // Clear the progress bar line
-      process.stdout.write(`${'\r'.padEnd(process.stdout.columns || 80)}\r`)
-
-      // Log the interrupting message using the standard log mechanism
-      // This uses console.error/warn internally, which might affect cursor position
-      // depending on the environment, but it keeps logging consistent.
-      void this.log(level, interruptMessage)
-
-      // Redraw the progress bar after a short delay to allow the interrupt message to print
-      // This isn't perfect but helps avoid immediate overwrite.
-      setTimeout(() => {
-        if (this.activeProgressBar) { // Check if still active
-          this.renderProgressBar(this.activeProgressBar)
-        }
-      }, 50)
-    }
-
-    return { update, finish, interrupt }
+    if (this.shouldWriteToFile())
+      await this.writeToFile(logEntry)
   }
 
   // Helper to render the progress bar
@@ -1590,7 +1631,7 @@ export class Logger {
     barState: NonNullable<Logger['activeProgressBar']>,
     isFinished: boolean = false,
   ): void {
-    if (!this.enabled || !this.fancy || isBrowserProcess() || !process.stdout.isTTY)
+    if (!this.enabled || !this.shouldStyleConsole() || !process.stdout.isTTY)
       return
 
     const percent = Math.min(100, Math.max(0, Math.round((barState.current / barState.total) * 100)))
