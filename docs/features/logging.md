@@ -131,4 +131,33 @@ Clarity automatically detects the current environment and adjusts its behavior:
 // Both: maintain consistent API and log format
 ```
 
+## Markdown-enhanced Messages
+
+Clarity can interpret lightweight Markdown in your log messages for improved readability in the console, while keeping raw Markdown in log files.
+
+- **Supported syntax (console styling):**
+  - Links: `[text](url)`
+    - Local file paths (e.g. `./README.md`) are detected; when your terminal supports hyperlinks (OSC 8), they are clickable.
+    - HTTP(S)/file:// links become clickable when supported, otherwise only the label is shown.
+  - Inline code: `` `code` `` (rendered with subtle background)
+  - Bold: `**text**`
+  - Italic: `*text*` or `_text_`
+  - Strikethrough: `~text~`
+
+- **Console vs file output:**
+  - Console output applies styling when fancy mode is enabled and the terminal supports it.
+  - File output always contains the original raw Markdown text (no ANSI sequences), so you can render or post-process it later.
+
+### Examples
+
+```ts
+await logger.info('Hello **bold** *italic* ~strike~ `code` [link](https://example.com)')
+await logger.info('Open [README](./README.md) to learn more')
+
+// With inline HTML inside backticks (preserved in files, styled safely in console)
+await logger.info('snippet: `<h1>hello</h1>` inside code')
+```
+
+Tip: Terminal hyperlink support depends on your environment (e.g., iTerm2, VS Code, WezTerm, kitty, or VTE >= 0.50). When unsupported, links are displayed as underlined labels without a URI.
+
 For more advanced logging configurations and options, see the [Configuration](/advanced/configuration) page.
