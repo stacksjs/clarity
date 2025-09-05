@@ -515,15 +515,26 @@ export class Logger {
     const { key } = this.getCurrentKey()
     const iv = randomBytes(16)
     const cipher = createCipheriv('aes-256-gcm', key, iv)
-    const encrypted = Buffer.concat([
-      cipher.update(data, 'utf8'),
-      cipher.final(),
-    ])
+
+    // Convert input to Buffer once
+    const input = Buffer.isBuffer(data as any) ? (data as unknown as Buffer) : Buffer.from(data, 'utf8')
+
+    // Perform encryption in two steps and preallocate output buffer to avoid repeated concatenations
+    const part1 = cipher.update(input)
+    const part2 = cipher.final()
+    const totalCipherLen = part1.length + part2.length
+
     const authTag = cipher.getAuthTag()
 
-    // Return encrypted data with IV and auth tag
+    // Layout: [IV(16)] [CIPHERTEXT] [AUTH_TAG(16)]
+    const out = Buffer.allocUnsafe(16 + totalCipherLen + 16)
+    iv.copy(out, 0)
+    part1.copy(out, 16)
+    part2.copy(out, 16 + part1.length)
+    authTag.copy(out, 16 + totalCipherLen)
+
     return {
-      encrypted: Buffer.concat([iv, encrypted, authTag]),
+      encrypted: out,
       iv,
     }
   }
@@ -1332,25 +1343,27 @@ export class Logger {
     const key = this.keys.get(this.currentKeyId)!
 
     try {
-      // Convert input to buffer if it's a string
+      // Convert input to buffer if it's a string (assume base64 if string)
       const encryptedData = Buffer.isBuffer(data) ? data : Buffer.from(data, 'base64')
 
       // Extract IV (16 bytes), auth tag (16 bytes), and ciphertext
-      const iv = encryptedData.slice(0, 16)
-      const authTag = encryptedData.slice(-16)
-      const ciphertext = encryptedData.slice(16, -16)
+      const iv = encryptedData.subarray(0, 16)
+      const authTag = encryptedData.subarray(encryptedData.length - 16)
+      const ciphertext = encryptedData.subarray(16, encryptedData.length - 16)
 
       // Create decipher with correct method
       const decipher = createDecipheriv('aes-256-gcm', key, iv)
       decipher.setAuthTag(authTag)
 
-      // Decrypt
-      const decrypted = Buffer.concat([
-        decipher.update(ciphertext),
-        decipher.final(),
-      ])
+      // Decrypt using two-step update/final without extra concatenations
+      const d1 = decipher.update(ciphertext)
+      const d2 = decipher.final()
+      const totalLen = d1.length + d2.length
+      const out = Buffer.allocUnsafe(totalLen)
+      d1.copy(out, 0)
+      d2.copy(out, d1.length)
 
-      return decrypted.toString('utf8')
+      return out.toString('utf8')
     }
     catch (err: any) {
       throw new Error(`Decryption failed: ${err instanceof Error ? err.message : String(err)}`)
