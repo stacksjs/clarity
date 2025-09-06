@@ -37,7 +37,7 @@
       "import": "./dist/*"
     }
   },
-  "module": "./dist/index.js",
+  "module": "./dist/src/index.js",
   "types": "./dist/index.d.ts",
   "bin": {
     "clarity": "./dist/bin/cli.js"
