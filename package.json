@@ -1,7 +1,7 @@
 {
   "name": "@stacksjs/clarity",
   "type": "module",
-  "version": "0.3.16",
+  "version": "0.3.17",
   "description": "A modern logging & debugging utility. For browser & server.",
   "author": "Chris Breuer <chris@stacksjs.org>",
   "license": "MIT",
@@ -37,7 +37,7 @@
       "import": "./dist/*"
     }
   },
-  "module": "./dist/index.js",
+  "module": "./dist/src/index.js",
   "types": "./dist/index.d.ts",
   "bin": {
     "clarity": "./dist/bin/cli.js"
@@ -78,20 +78,20 @@
   },
   "devDependencies": {
     "@happy-dom/global-registrator": "^18.0.1",
-    "@stacksjs/bumpx": "^0.1.17",
+    "@stacksjs/bumpx": "^0.1.78",
     "@stacksjs/docs": "^0.70.23",
     "@stacksjs/eslint-config": "^4.10.2-beta.3",
     "@stacksjs/gitlint": "^0.1.5",
-    "@stacksjs/logsmith": "^0.1.8",
-    "@types/bun": "^1.2.13",
-    "buddy-bot": "^0.8.9",
-    "bumpp": "^10.1.1",
+    "@stacksjs/logsmith": "^0.1.18",
+    "@types/bun": "^1.2.21",
+    "buddy-bot": "^0.8.10",
+    "bumpp": "^10.2.3",
     "bun-git-hooks": "^0.2.19",
     "bun-plugin-dtsx": "^0.21.12",
-    "bunfig": "^0.10.0",
-    "changelogen": "^0.6.1",
-    "typescript": "^5.8.3",
-    "unocss": "^66.1.2"
+    "bunfig": "^0.10.1",
+    "changelogen": "^0.6.2",
+    "typescript": "^5.9.2",
+    "unocss": "^66.5.0"
   },
   "overrides": {
     "unconfig": "0.3.10"
