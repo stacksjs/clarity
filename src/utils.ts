@@ -47,3 +47,47 @@ export function chunk<T>(array: T[], size: number): T[][] {
     chunks.push(array.slice(i, i + size))
   return chunks
 }
+
+/**
+ * Detect if running under Ghostty terminal.
+ */
+export function isGhostty(): boolean {
+  try {
+    return process.env.TERM_PROGRAM === 'Ghostty'
+  }
+  catch {
+    return false
+  }
+}
+
+/**
+ * Whether OSC 8 hyperlinks are supported, using a conservative heuristic.
+ * Allows opt-in via FORCE_OSC8=1 and disables via NO_OSC8=1.
+ */
+export function supportsOsc8(): boolean {
+  if (process.env.NO_OSC8 === '1')
+    return false
+  if (process.env.FORCE_OSC8 === '1')
+    return true
+
+  // Known implementations: Ghostty, iTerm2, modern VSCode terminal, foot, kitty
+  const termProgram = process.env.TERM_PROGRAM || ''
+  if (termProgram === 'Ghostty' || termProgram === 'iTerm.app' || termProgram === 'WezTerm' || termProgram === 'vscode')
+    return true
+
+  // Fallback to TTY presence as a weak signal
+  const hasTTY = (typeof process.stderr !== 'undefined' && (process.stderr as any).isTTY)
+    || (typeof process.stdout !== 'undefined' && (process.stdout as any).isTTY)
+  return !!hasTTY
+}
+
+/**
+ * Create an OSC 8 hyperlink sequence.
+ * Format: ESC ] 8 ; params ; url ST text ESC ] 8 ;; ST
+ */
+export function makeOsc8Link(text: string, url: string): string {
+  const ESC = '\u001B]'
+  const ST = '\u0007'
+  // Empty params segment (";") for default behavior
+  return `${ESC}8;;${url}${ST}${text}${ESC}8;;${ST}`
+}

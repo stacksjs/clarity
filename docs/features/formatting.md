@@ -159,7 +159,7 @@ await logger.box('Application Started')
 
 Output:
 
-```
+```txt
 ┌─────────────────────────┐
 │ Application Started     │
 └─────────────────────────┘
@@ -177,3 +177,25 @@ const plainText = stripColors(coloredText) // "Error: Failed"
 ```
 
 Clarity's flexible formatting options help you create logs that are useful for both humans and machines.
+
+## Hyperlinks (OSC 8)
+
+Clarity renders Markdown-style links as clickable hyperlinks in capable terminals like Ghostty.
+
+- `[Ghostty docs](https://ghostty.org/docs)` becomes a clickable link.
+- Local files are converted into `file://` links if they exist, e.g. `[open log](./logs/app.log)`.
+
+```ts
+import { Logger } from 'clarity'
+
+const logger = new Logger('docs')
+
+await logger.info('Read the [Ghostty docs](https://ghostty.org/docs)')
+await logger.info('Open the [latest log](./logs/app.log)')
+```
+
+Notes
+
+- OSC 8 link emission is enabled automatically in Ghostty and other supported terminals.
+- You can disable or force-enable via environment variables: `NO_OSC8=1` or `FORCE_OSC8=1`.
+- When unsupported or disabled, links gracefully degrade to styled text.

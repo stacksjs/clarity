@@ -10,7 +10,7 @@ import { createGzip } from 'node:zlib'
 import { config as defaultConfig } from './config'
 import { JsonFormatter } from './formatters/json'
 import { bgRed, bgYellow, blue, bold, green, styles, white } from './style'
-import { isBrowserProcess } from './utils'
+import { isBrowserProcess, makeOsc8Link, supportsOsc8 } from './utils'
 
 // Define missing types
 type BunTimer = ReturnType<typeof setTimeout>
@@ -956,17 +956,13 @@ export class Logger {
       const label = styles.underline(styles.blue(text))
 
       const absFile = this.toAbsoluteFilePath(url)
-      if (absFile && this.shouldStyleConsole() && this.supportsHyperlinks()) {
+      if (absFile && this.shouldStyleConsole() && supportsOsc8()) {
         const href = `file://${encodeURI(absFile)}`
-        const OSC = '\u001B]8;;'
-        const ST = '\u001B\\' // String Terminator
-        return `${OSC}${href}${ST}${label}${OSC}${ST}`
+        return makeOsc8Link(label, href)
       }
 
-      if (this.shouldStyleConsole() && this.supportsHyperlinks()) {
-        const OSC = '\u001B]8;;'
-        const ST = '\u001B\\' // String Terminator
-        return `${OSC}${url}${ST}${label}${OSC}${ST}`
+      if (this.shouldStyleConsole() && supportsOsc8()) {
+        return makeOsc8Link(label, url)
       }
 
       return label
@@ -990,29 +986,11 @@ export class Logger {
     return out
   }
 
-  // Detect basic terminal hyperlink support (OSC 8)
+  // Detect terminal hyperlink support via utils
   private supportsHyperlinks(): boolean {
     if (isBrowserProcess())
       return false
-
-    const env = process.env
-    if (!env)
-      return false
-
-    // Known terminals
-    if (env.TERM_PROGRAM === 'iTerm.app' || env.TERM_PROGRAM === 'vscode' || env.TERM_PROGRAM === 'WezTerm')
-      return true
-    if (env.WT_SESSION)
-      return true // Windows Terminal
-    if (env.TERM === 'xterm-kitty')
-      return true // kitty
-
-    // VTE-based terminals (>= 0.50)
-    const vte = env.VTE_VERSION ? Number.parseInt(env.VTE_VERSION, 10) : 0
-    if (!Number.isNaN(vte) && vte >= 5000)
-      return true
-
-    return false
+    return supportsOsc8()
   }
 
   // Resolve URL-like input to an absolute file path if it points to a local file that exists
@@ -1052,6 +1030,26 @@ export class Logger {
     const consoleText = this.shouldStyleConsole() ? this.formatMarkdown(input) : input
     const fileText = input.replace(this.ANSI_PATTERN, '')
     return { consoleText, fileText }
+  }
+
+  /**
+   * Set terminal window/tab title using OSC 2.
+   * No-op if not in a TTY or styling is disabled.
+   */
+  setTerminalTitle(title: string): void {
+    try {
+      const stdout: any = process.stdout
+      if (!stdout || !stdout.isTTY)
+        return
+      if (!this.shouldStyleConsole())
+        return
+      const ESC = '\u001B]'
+      const ST = '\u0007'
+      stdout.write(`${ESC}2;${title}${ST}`)
+    }
+    catch {
+      // ignore
+    }
   }
 
   private async log(level: LogLevel, message: string | Error, ...args: any[]): Promise<void> {
