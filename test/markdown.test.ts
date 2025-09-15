@@ -1,12 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it } from 'bun:test'
 import { existsSync } from 'node:fs'
-import { mkdir, readFile, rm } from 'node:fs/promises'
+import { mkdir, readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { Logger } from '../src'
 
 const TEST_LOG_DIR = join(process.cwd(), 'test-logs-markdown')
 
 // ANSI escape sequence matcher
+// eslint-disable-next-line no-control-regex
 const ANSI_REGEX = /\x1B\[[0-9;]*m/g
 
 describe('Markdown logging (file saving only)', () => {

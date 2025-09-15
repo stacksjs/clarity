@@ -32,6 +32,30 @@
 - 💻 **Fully Typed** _First-Class TypeScript support_
 - 📦 **Lightweight** _Zero external dependencies_
 
+## Ghostty support
+
+Clarity detects modern terminals like Ghostty and emits OSC 8 hyperlinks and optional terminal titles for a better UX.
+
+- Hyperlinks (OSC 8)
+  - Markdown-style links in messages like `[docs](https://ghostty.org/docs)` render as clickable links in Ghostty and other capable terminals.
+  - Local file paths in links (e.g. `[open log](./logs/app.log)`) become clickable `file://` links when the file exists.
+  - Disable/force with env vars: `NO_OSC8=1` to disable, `FORCE_OSC8=1` to force-enable.
+
+- Terminal title (OSC 2)
+  - You can set the window/tab title when running in a TTY:
+
+  ```ts
+  import { Logger } from 'clarity'
+  const logger = new Logger('build')
+  logger.setTerminalTitle('Clarity • Build running')
+  ```
+
+- Detection
+  - Ghostty is detected via `TERM_PROGRAM=Ghostty`.
+  - Other terminals with OSC 8 support are detected heuristically (`TERM_PROGRAM=iTerm.app|WezTerm|vscode`, `VTE_VERSION>=5000`, Windows Terminal, kitty, etc.).
+
+If your terminal doesn’t support OSC 8 or styling is disabled, Clarity falls back to plain text without underlines or clickable links.
+
 ## Install
 
 ```bash

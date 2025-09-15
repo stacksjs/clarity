@@ -13,7 +13,13 @@ const config: ESLintConfig = stacks({
   ignores: [
     'fixtures/**',
     '**/logger.md',
+    'CHANGELOG.md',
   ],
+  // Temporarily disable due to @stylistic/eslint-plugin crash in tests
+  rules: {
+    'style/indent': 'off',
+    '@stylistic/indent': 'off',
+  },
 })
 
 export default config
