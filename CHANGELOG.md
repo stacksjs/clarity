@@ -1,3 +1,32 @@
+[Compare changes](https://github.com/stacksjs/clarity/compare/v0.3.16...v0.3.17)
+
+### 🧹 Chores
+
+- release v0.3.17 ([0dae179](https://github.com/stacksjs/clarity/commit/0dae179))
+- update deps ([ae1f7d6](https://github.com/stacksjs/clarity/commit/ae1f7d6))
+- use launchpad ([b24588e](https://github.com/stacksjs/clarity/commit/b24588e))
+- adjust built module path ([a928d1d](https://github.com/stacksjs/clarity/commit/a928d1d))
+- load right bunfig function ([374cb4d](https://github.com/stacksjs/clarity/commit/374cb4d))
+
+### Contributors
+
+- Adelino Ngomacha <adelinob335@gmail.com>
+- Chris <chrisbreuer93@gmail.com>
+
+[Compare changes](https://github.com/stacksjs/clarity/compare/v0.3.16...HEAD)
+
+### 🧹 Chores
+
+- update deps ([ae1f7d6](https://github.com/stacksjs/clarity/commit/ae1f7d6))
+- use launchpad ([b24588e](https://github.com/stacksjs/clarity/commit/b24588e))
+- adjust built module path ([a928d1d](https://github.com/stacksjs/clarity/commit/a928d1d))
+- load right bunfig function ([374cb4d](https://github.com/stacksjs/clarity/commit/374cb4d))
+
+### Contributors
+
+- Adelino Ngomacha <adelinob335@gmail.com>
+- Chris <chrisbreuer93@gmail.com>
+
 [Compare changes](https://github.com/stacksjs/clarity/compare/v0.3.14...HEAD)
 
 ### Contributors

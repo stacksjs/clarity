@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'bun:test'
 import { Buffer } from 'node:buffer'
 
-import { describe, it, expect } from 'bun:test'
 import { createCipheriv, randomBytes } from 'node:crypto'
 import { Logger } from '../src'
 import { PerformanceHelper } from './helpers'
@@ -79,7 +78,6 @@ describe('encryption/decryption performance and correctness', () => {
 
         if (out.length !== message.length)
           throw new Error('invalid decrypt')
-
       }
     })
 
