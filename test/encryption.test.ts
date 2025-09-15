@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'bun:test'
 import { Buffer } from 'node:buffer'
+
+import { describe, it, expect } from 'bun:test'
 import { createCipheriv, randomBytes } from 'node:crypto'
 import { Logger } from '../src'
 import { PerformanceHelper } from './helpers'
@@ -29,6 +31,7 @@ describe('encryption/decryption performance and correctness', () => {
     logger.setTestEncryptionKey(keyId, key)
 
     const message = `Hello Clarity! ${'x'.repeat(1024)}` // ~1KB payload
+
     const encrypted = encryptWithAesGcm(message, key)
 
     const decrypted = await logger.decrypt(encrypted)
@@ -47,6 +50,7 @@ describe('encryption/decryption performance and correctness', () => {
     logger.setTestEncryptionKey(keyId, key)
 
     const message = `Base64 path ${'y'.repeat(2048)}` // ~2KB payload
+
     const encrypted = encryptWithAesGcm(message, key)
     const b64 = encrypted.toString('base64')
 
@@ -72,8 +76,10 @@ describe('encryption/decryption performance and correctness', () => {
     const durationMs = await PerformanceHelper.measureExecution(async () => {
       for (let i = 0; i < iterations; i++) {
         const out = await logger.decrypt(encrypted)
+
         if (out.length !== message.length)
           throw new Error('invalid decrypt')
+
       }
     })
 
