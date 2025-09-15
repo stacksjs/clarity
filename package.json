@@ -78,12 +78,12 @@
   },
   "devDependencies": {
     "@happy-dom/global-registrator": "^17.6.3",
-    "@stacksjs/bumpx": "^0.1.78",
+    "@stacksjs/bumpx": "^0.1.84",
     "@stacksjs/docs": "^0.70.23",
     "@stacksjs/eslint-config": "^4.10.2-beta.3",
     "@stacksjs/gitlint": "^0.1.5",
     "@stacksjs/logsmith": "^0.1.18",
-    "@types/bun": "^1.2.21",
+    "@types/bun": "^1.2.22",
     "buddy-bot": "^0.8.10",
     "bumpp": "^10.2.3",
     "bun-git-hooks": "^0.2.19",
@@ -91,7 +91,7 @@
     "bunfig": "^0.10.1",
     "changelogen": "^0.6.2",
     "typescript": "^5.9.2",
-    "unocss": "^66.5.0"
+    "unocss": "^66.5.1"
   },
   "overrides": {
     "unconfig": "0.3.10"
