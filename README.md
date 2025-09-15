@@ -6,7 +6,7 @@
 <!-- [![npm downloads][npm-downloads-src]][npm-downloads-href] -->
 <!-- [![Codecov][codecov-src]][codecov-href] -->
 
-# clarity
+# stacksjs/clarity
 
 > A modern `debug` client for TypeScript, offering powerful logging capabilities with colored output, performance tracking, log rotation, and both CLI & library support.
 
@@ -45,7 +45,7 @@ Clarity detects modern terminals like Ghostty and emits OSC 8 hyperlinks and opt
   - You can set the window/tab title when running in a TTY:
 
   ```ts
-  import { Logger } from 'clarity'
+  import { Logger } from '@stacksjs/clarity'
   const logger = new Logger('build')
   logger.setTerminalTitle('Clarity • Build running')
   ```
@@ -59,8 +59,8 @@ If your terminal doesn’t support OSC 8 or styling is disabled, Clarity falls b
 ## Install
 
 ```bash
-bun install clarity
-npm install clarity
+bun add @stacksjs/clarity
+npm install @stacksjs/clarity
 ```
 
 ## Get Started
@@ -72,7 +72,7 @@ There are two ways of using clarity: _as a library or as a CLI._
 Given the npm package is installed:
 
 ```ts
-import { Logger } from 'clarity'
+import { Logger } from '@stacksjs/clarity'
 
 // Configure the logger
 const logger = new Logger('parser', {
@@ -122,7 +122,7 @@ _To learn more about the Library usage, please refer to the [Library documentati
 #### Basic Logging with Different Levels
 
 ```ts
-import { Logger } from 'clarity'
+import { Logger } from '@stacksjs/clarity'
 
 const logger = new Logger('app')
 
@@ -137,7 +137,7 @@ await logger.error('Failed to connect to database')
 #### Performance Tracking
 
 ```ts
-import { Logger } from 'clarity'
+import { Logger } from '@stacksjs/clarity'
 
 const logger = new Logger('performance')
 
@@ -158,7 +158,7 @@ await Promise.all([
 #### Domain-Specific Logging
 
 ```ts
-import { Logger } from 'clarity'
+import { Logger } from '@stacksjs/clarity'
 
 const logger = new Logger('api')
 
@@ -175,7 +175,7 @@ await cacheLogger.debug('Cache miss') // [api:cache] Cache miss
 #### Advanced Configuration
 
 ```ts
-import { Logger } from 'clarity'
+import { Logger } from '@stacksjs/clarity'
 
 const logger = new Logger('app', {
   // Log level and format
@@ -203,7 +203,7 @@ const logger = new Logger('app', {
 #### Structured Logging
 
 ```ts
-import { Logger } from 'clarity'
+import { Logger } from '@stacksjs/clarity'
 
 const logger = new Logger('api', { format: 'json' })
 
@@ -234,7 +234,7 @@ catch (error) {
 #### Conditional Logging
 
 ```ts
-import { Logger } from 'clarity'
+import { Logger } from '@stacksjs/clarity'
 
 const logger = new Logger('app')
 
@@ -316,7 +316,7 @@ Clarity can be configured programmatically, using environment variables, or thro
 ### Programmatic Configuration
 
 ```typescript
-import { Logger } from 'clarity'
+import { Logger } from '@stacksjs/clarity'
 
 const logger = new Logger('app', {
   // Log Levels
