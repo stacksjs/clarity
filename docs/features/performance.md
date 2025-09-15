@@ -62,6 +62,14 @@ for (let i = 0; i < 100; i++) {
 progress.finish('All files processed successfully')
 ```
 
+### Loading / Progress Demo
+
+For a smooth, GPU-accelerated terminal rendering experience, we recommend using [Ghostty](https://ghostty.org/). The following demo shows Clarity's progress output in Ghostty:
+
+![Clarity progress in Ghostty](https://dummyimage.com/1200x400/0a0abc/ffffff&text=Clarity+progress+in+Ghostty)
+
+To use your own GIF, add it at `docs/public/images/progress-ghostty.gif` and replace the placeholder URL above with `/images/progress-ghostty.gif`.
+
 The progress bar includes these methods:
 
 - `update(current, message?)`: Update progress position and optional message

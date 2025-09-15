@@ -2,6 +2,23 @@ html.dark {
   color-scheme: dark;
 }
 
+/* Scenic background image across the docs with graceful fallback */
+body {
+  /* Fallback gradient if image is missing */
+  background: linear-gradient(180deg, #0a0abc 0%, #0a0a2b 100%);
+  /* Scenic California background (place your image at docs/public/images/ca-bg.jpg or .png) */
+  background-image: url('/images/ca-bg.jpg');
+  background-size: cover;
+  background-position: center center;
+  background-attachment: fixed;
+}
+
+/* Subtle backdrop to keep content readable */
+.VPSidebar, .VPNav, .VPDoc .content {
+  backdrop-filter: saturate(1.2) blur(2px);
+  background-color: color-mix(in oklab, var(--vp-c-bg), transparent 15%);
+}
+
 .vp-doc h2 {
   border-top: 0;
   margin-top: 10px;
