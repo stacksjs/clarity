@@ -1,3 +1,24 @@
+[Compare changes](https://github.com/stacksjs/clarity/compare/v0.3.18...v0.3.19)
+
+### 🧹 Chores
+
+- release v0.3.19 ([af779d1](https://github.com/stacksjs/clarity/commit/af779d1))
+- minor changes for typecheck ([13c4fca](https://github.com/stacksjs/clarity/commit/13c4fca))
+
+### Contributors
+
+- cab-mikee <mike.cabz32@gmail.com>
+
+[Compare changes](https://github.com/stacksjs/clarity/compare/v0.3.18...HEAD)
+
+### 🧹 Chores
+
+- minor changes for typecheck ([13c4fca](https://github.com/stacksjs/clarity/commit/13c4fca))
+
+### Contributors
+
+- cab-mikee <mike.cabz32@gmail.com>
+
 [Compare changes](https://github.com/stacksjs/clarity/compare/v0.3.17...v0.3.18)
 
 ### 🧹 Chores
