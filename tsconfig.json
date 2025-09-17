@@ -23,5 +23,12 @@
     "verbatimModuleSyntax": true,
     "skipDefaultLibCheck": true,
     "skipLibCheck": true
-  }
+  },
+  "exclude": [
+    "dist",
+    "bin",
+    "node_modules",
+    "**/*.test.ts",
+    "test"
+  ]
 }

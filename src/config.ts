@@ -50,8 +50,9 @@ async function loadConfig(): Promise<ClarityConfig> {
   try {
     // const isVerbose = process.env.CLARITY_VERBOSE === 'true' || defaultConfig.verbose
 
-    // bunfig.tryLoadConfig expects (name, options)
-    const loadedConfig = await bunfigLoadConfig('clarity', {
+    // bunfig.loadConfig expects a single options object
+    const loadedConfig = await bunfigLoadConfig({
+      name: 'clarity',
       defaultConfig,
       cwd: process.cwd(),
     }) as Partial<ClarityConfig> | undefined
