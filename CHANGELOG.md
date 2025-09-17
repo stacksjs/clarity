@@ -1,3 +1,54 @@
+[Compare changes](https://github.com/stacksjs/clarity/compare/v0.3.17...v0.3.18)
+
+### 🧹 Chores
+
+- release v0.3.18 ([b63c028](https://github.com/stacksjs/clarity/commit/b63c028))
+- minor changes ([edae262](https://github.com/stacksjs/clarity/commit/edae262))
+- **deps**: update dependency actions/checkout to v5.0.0 (#56) ([019d6d0](https://github.com/stacksjs/clarity/commit/019d6d0)) ([#56](https://github.com/stacksjs/clarity/issues/56), [#56](https://github.com/stacksjs/clarity/issues/56))
+- minor changes on package.json (#57) ([5a0da43](https://github.com/stacksjs/clarity/commit/5a0da43)) ([#57](https://github.com/stacksjs/clarity/issues/57), [#57](https://github.com/stacksjs/clarity/issues/57))
+- **deps**: update dependency actions/checkout to v5.0.0 (#53) ([5682dce](https://github.com/stacksjs/clarity/commit/5682dce)) ([#53](https://github.com/stacksjs/clarity/issues/53), [#53](https://github.com/stacksjs/clarity/issues/53))
+- **deps**: update all non-major dependencies (#54) ([4e070f4](https://github.com/stacksjs/clarity/commit/4e070f4)) ([#54](https://github.com/stacksjs/clarity/issues/54), [#54](https://github.com/stacksjs/clarity/issues/54))
+- improve readme (#55) ([1226983](https://github.com/stacksjs/clarity/commit/1226983)) ([#55](https://github.com/stacksjs/clarity/issues/55), [#55](https://github.com/stacksjs/clarity/issues/55))
+- **deps**: update dependency @happy-dom/global-registrator to 18.0.1 (#50) ([1844e28](https://github.com/stacksjs/clarity/commit/1844e28)) ([#50](https://github.com/stacksjs/clarity/issues/50), [#50](https://github.com/stacksjs/clarity/issues/50))
+- **deps**: update dependency actions/checkout to v5.0.0 (#51) ([d21abb7](https://github.com/stacksjs/clarity/commit/d21abb7)) ([#51](https://github.com/stacksjs/clarity/issues/51), [#51](https://github.com/stacksjs/clarity/issues/51))
+- **deps**: update all non-major dependencies (#52) ([e8e87ea](https://github.com/stacksjs/clarity/commit/e8e87ea)) ([#52](https://github.com/stacksjs/clarity/issues/52), [#52](https://github.com/stacksjs/clarity/issues/52))
+- **deps**: update all non-major dependencies (#49) ([f116133](https://github.com/stacksjs/clarity/commit/f116133)) ([#49](https://github.com/stacksjs/clarity/issues/49), [#49](https://github.com/stacksjs/clarity/issues/49))
+- add markdown on docs (#48) ([26fe22a](https://github.com/stacksjs/clarity/commit/26fe22a)) ([#48](https://github.com/stacksjs/clarity/issues/48), [#48](https://github.com/stacksjs/clarity/issues/48))
+- add support for markdown indicators in log messages  (#43) ([c5a5edd](https://github.com/stacksjs/clarity/commit/c5a5edd)) ([#43](https://github.com/stacksjs/clarity/issues/43), [#43](https://github.com/stacksjs/clarity/issues/43))
+- **deps**: update all non-major dependencies (#47) ([5dbb4a5](https://github.com/stacksjs/clarity/commit/5dbb4a5)) ([#47](https://github.com/stacksjs/clarity/issues/47), [#47](https://github.com/stacksjs/clarity/issues/47))
+
+### Contributors
+
+- Chris <chrisbreuer93@gmail.com>
+- Michael Vincent Caballero <mike.cabz32@gmail.com>
+- cab-mikee <mike.cabz32@gmail.com>
+- renovate[bot] <29139614+renovate[bot]@users.noreply.github.com>
+
+[Compare changes](https://github.com/stacksjs/clarity/compare/v0.3.17...HEAD)
+
+### 🧹 Chores
+
+- minor changes ([edae262](https://github.com/stacksjs/clarity/commit/edae262))
+- **deps**: update dependency actions/checkout to v5.0.0 (#56) ([019d6d0](https://github.com/stacksjs/clarity/commit/019d6d0)) ([#56](https://github.com/stacksjs/clarity/issues/56), [#56](https://github.com/stacksjs/clarity/issues/56))
+- minor changes on package.json (#57) ([5a0da43](https://github.com/stacksjs/clarity/commit/5a0da43)) ([#57](https://github.com/stacksjs/clarity/issues/57), [#57](https://github.com/stacksjs/clarity/issues/57))
+- **deps**: update dependency actions/checkout to v5.0.0 (#53) ([5682dce](https://github.com/stacksjs/clarity/commit/5682dce)) ([#53](https://github.com/stacksjs/clarity/issues/53), [#53](https://github.com/stacksjs/clarity/issues/53))
+- **deps**: update all non-major dependencies (#54) ([4e070f4](https://github.com/stacksjs/clarity/commit/4e070f4)) ([#54](https://github.com/stacksjs/clarity/issues/54), [#54](https://github.com/stacksjs/clarity/issues/54))
+- improve readme (#55) ([1226983](https://github.com/stacksjs/clarity/commit/1226983)) ([#55](https://github.com/stacksjs/clarity/issues/55), [#55](https://github.com/stacksjs/clarity/issues/55))
+- **deps**: update dependency @happy-dom/global-registrator to 18.0.1 (#50) ([1844e28](https://github.com/stacksjs/clarity/commit/1844e28)) ([#50](https://github.com/stacksjs/clarity/issues/50), [#50](https://github.com/stacksjs/clarity/issues/50))
+- **deps**: update dependency actions/checkout to v5.0.0 (#51) ([d21abb7](https://github.com/stacksjs/clarity/commit/d21abb7)) ([#51](https://github.com/stacksjs/clarity/issues/51), [#51](https://github.com/stacksjs/clarity/issues/51))
+- **deps**: update all non-major dependencies (#52) ([e8e87ea](https://github.com/stacksjs/clarity/commit/e8e87ea)) ([#52](https://github.com/stacksjs/clarity/issues/52), [#52](https://github.com/stacksjs/clarity/issues/52))
+- **deps**: update all non-major dependencies (#49) ([f116133](https://github.com/stacksjs/clarity/commit/f116133)) ([#49](https://github.com/stacksjs/clarity/issues/49), [#49](https://github.com/stacksjs/clarity/issues/49))
+- add markdown on docs (#48) ([26fe22a](https://github.com/stacksjs/clarity/commit/26fe22a)) ([#48](https://github.com/stacksjs/clarity/issues/48), [#48](https://github.com/stacksjs/clarity/issues/48))
+- add support for markdown indicators in log messages  (#43) ([c5a5edd](https://github.com/stacksjs/clarity/commit/c5a5edd)) ([#43](https://github.com/stacksjs/clarity/issues/43), [#43](https://github.com/stacksjs/clarity/issues/43))
+- **deps**: update all non-major dependencies (#47) ([5dbb4a5](https://github.com/stacksjs/clarity/commit/5dbb4a5)) ([#47](https://github.com/stacksjs/clarity/issues/47), [#47](https://github.com/stacksjs/clarity/issues/47))
+
+### Contributors
+
+- Chris <chrisbreuer93@gmail.com>
+- Michael Vincent Caballero <mike.cabz32@gmail.com>
+- cab-mikee <mike.cabz32@gmail.com>
+- renovate[bot] <29139614+renovate[bot]@users.noreply.github.com>
+
 [Compare changes](https://github.com/stacksjs/clarity/compare/v0.3.16...v0.3.17)
 
 ### 🧹 Chores
