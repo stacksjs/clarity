@@ -1,7 +1,7 @@
 {
   "name": "@stacksjs/clarity",
   "type": "module",
-  "version": "0.3.19",
+  "version": "0.3.21",
   "description": "A modern logging & debugging utility. For browser & server.",
   "author": "Chris Breuer <chris@stacksjs.org>",
   "license": "MIT",
@@ -87,7 +87,7 @@
     "buddy-bot": "^0.9.7",
     "bumpp": "^10.2.3",
     "bun-git-hooks": "^0.2.19",
-    "bun-plugin-dtsx": "^0.21.12",
+    "bun-plugin-dtsx": "0.21.12",
     "bunfig": "^0.15.0",
     "changelogen": "^0.6.2",
     "typescript": "^5.9.2",
