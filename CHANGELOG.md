@@ -1,3 +1,24 @@
+[Compare changes](https://github.com/stacksjs/clarity/compare/v0.3.20...v0.3.21)
+
+### 🧹 Chores
+
+- release v0.3.21 ([2e3330c](https://github.com/stacksjs/clarity/commit/2e3330c))
+- adjust deps ([aa9f21f](https://github.com/stacksjs/clarity/commit/aa9f21f))
+
+### Contributors
+
+- Chris <chrisbreuer93@gmail.com>
+
+[Compare changes](https://github.com/stacksjs/clarity/compare/v0.3.20...HEAD)
+
+### 🧹 Chores
+
+- adjust deps ([aa9f21f](https://github.com/stacksjs/clarity/commit/aa9f21f))
+
+### Contributors
+
+- Chris <chrisbreuer93@gmail.com>
+
 [Compare changes](https://github.com/stacksjs/clarity/compare/v0.3.19...v0.3.20)
 
 ### 🧹 Chores
