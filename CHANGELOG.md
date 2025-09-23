@@ -1,3 +1,24 @@
+[Compare changes](https://github.com/stacksjs/clarity/compare/v0.3.19...v0.3.20)
+
+### 🧹 Chores
+
+- release v0.3.20 ([29e0a17](https://github.com/stacksjs/clarity/commit/29e0a17))
+- adjust dtsx version ([d4e2cad](https://github.com/stacksjs/clarity/commit/d4e2cad))
+
+### Contributors
+
+- Chris <chrisbreuer93@gmail.com>
+
+[Compare changes](https://github.com/stacksjs/clarity/compare/v0.3.19...HEAD)
+
+### 🧹 Chores
+
+- adjust dtsx version ([d4e2cad](https://github.com/stacksjs/clarity/commit/d4e2cad))
+
+### Contributors
+
+- Chris <chrisbreuer93@gmail.com>
+
 [Compare changes](https://github.com/stacksjs/clarity/compare/v0.3.18...v0.3.19)
 
 ### 🧹 Chores
