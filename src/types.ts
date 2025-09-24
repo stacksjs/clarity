@@ -154,6 +154,22 @@ export interface Logger {
   success: (message: string, ...args: any[]) => Promise<void>
   warn: (message: string, ...args: any[]) => Promise<void>
   error: (message: string, ...args: any[]) => Promise<void>
+  /**
+   * Create and manage a progress bar in the console.
+   */
+  progress: (total: number, initialMessage?: string) => {
+    update: (current: number, message?: string) => void
+    finish: (message?: string) => void
+    interrupt: (message: string, level?: LogLevel) => void
+  }
+  /**
+   * Log a starting task with a spinner-like indicator
+   */
+  start: (message: string, ...args: any[]) => Promise<void>
+  /**
+   * Start timing an operation; call returned fn to finish and log elapsed.
+   */
+  time: (label: string) => (metadata?: Record<string, any>) => Promise<void>
   destroy: () => Promise<void>
   createReadStream: () => NodeJS.ReadableStream
   decrypt?: (data: string) => Promise<string>
