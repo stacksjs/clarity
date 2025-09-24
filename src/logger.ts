@@ -64,12 +64,6 @@ export class Logger {
   private fileLocks: Map<string, number> = new Map()
   private currentKeyId: string | null = null
   private keys: Map<string, Buffer> = new Map()
-  private readonly config: ClarityConfig
-  private readonly options: ExtendedLoggerOptions
-  private readonly formatter: Formatter
-  private readonly timers: Set<BunTimer> = new Set()
-  private readonly subLoggers: Set<Logger> = new Set()
-  private readonly fingersCrossedBuffer: string[] = []
   private fingersCrossedConfig: FingersCrossedConfig | null
   private fingersCrossedActive: boolean = false
   private currentLogFile: string
@@ -84,8 +78,16 @@ export class Logger {
   private tagFormat: TagFormat
   private timestampPosition: 'left' | 'right'
   private environment: string // Environment prefix for log entries
+
+  readonly config: ClarityConfig
+  readonly options: ExtendedLoggerOptions
+  readonly formatter: Formatter
+  readonly timers: Set<BunTimer> = new Set()
+  readonly subLoggers: Set<Logger> = new Set()
+  readonly fingersCrossedBuffer: string[] = []
   // eslint-disable-next-line no-control-regex
-  private readonly ANSI_PATTERN = /\u001B\[.*?m/g // Use Unicode escape for ANSI sequence
+  readonly ANSI_PATTERN: RegExp = /\u001B\[.*?m/g // Use Unicode escape for ANSI sequence
+
   private activeProgressBar: { // State for the active progress bar
     total: number
     current: number
@@ -1172,6 +1174,79 @@ export class Logger {
   }
 
   /**
+   * Create and manage a progress bar in the console.
+   * Returns control functions to update, finish, or interrupt the progress.
+   *
+   * Example:
+   * const p = logger.progress(100, 'Processing files')
+   * for (let i = 0; i < 100; i++) {
+   *   p.update(i + 1, `Processing file ${i + 1}/100`)
+   * }
+   * p.finish('All files processed')
+   */
+  progress(total: number, initialMessage: string = ''): {
+    update: (current: number, message?: string) => void
+    finish: (message?: string) => void
+    interrupt: (message: string, level?: LogLevel) => void
+  } {
+    // Provide a safe no-op controller when disabled
+    const noop = {
+      update: (_current: number, _message?: string) => { /* noop */ },
+      finish: (_message?: string) => { /* noop */ },
+      interrupt: (_message: string, _level?: LogLevel) => { /* noop */ },
+    }
+
+    if (!this.enabled)
+      return noop
+
+    // Initialize internal progress state
+    const barLength = 30
+    this.activeProgressBar = {
+      total: Math.max(1, total || 1),
+      current: 0,
+      message: initialMessage || '',
+      barLength,
+      lastRenderedLine: '',
+    }
+
+    // Initial render if we can use fancy console output
+    if (this.shouldStyleConsole() && !isBrowserProcess() && process.stdout.isTTY) {
+      this.renderProgressBar(this.activeProgressBar)
+    }
+
+    const update = (current: number, message?: string) => {
+      if (!this.enabled || !this.activeProgressBar)
+        return
+      this.activeProgressBar.current = Math.min(Math.max(0, current), this.activeProgressBar.total)
+      if (message !== undefined)
+        this.activeProgressBar.message = message
+      if (this.shouldStyleConsole() && !isBrowserProcess() && process.stdout.isTTY)
+        this.renderProgressBar(this.activeProgressBar)
+    }
+
+    const finish = (message?: string) => {
+      if (!this.activeProgressBar)
+        return
+      this.finishProgressBar(this.activeProgressBar, message)
+    }
+
+    const interrupt = (message: string, level: LogLevel = 'info') => {
+      // Move to a new line to not overwrite the progress bar
+      if (!isBrowserProcess() && process.stdout.isTTY)
+        process.stdout.write('\n')
+      // Log the interruption message at the chosen level
+      const method: keyof Pick<Logger, 'debug' | 'info' | 'success' | 'warn' | 'error'>
+        = (level === 'warning' ? 'warn' : level) as any
+      void (this[method] as (msg: string) => Promise<void>)(message)
+      // Re-render progress if still active
+      if (this.activeProgressBar && this.shouldStyleConsole() && !isBrowserProcess() && process.stdout.isTTY)
+        this.renderProgressBar(this.activeProgressBar)
+    }
+
+    return { update, finish, interrupt }
+  }
+
+  /**
    * Start timing an operation
    * @param label The label for the operation being timed
    * @returns A function that when called with optional metadata will stop the timer and log the elapsed time
@@ -1234,22 +1309,33 @@ export class Logger {
     }
   }
 
+  // Overloads for ergonomics (second parameter optional via rest)
+  async debug(message: string): Promise<void>
+  async debug(message: string, ...args: any[]): Promise<void>
   async debug(message: string, ...args: any[]): Promise<void> {
     await this.log('debug', message, ...args)
   }
 
+  async info(message: string): Promise<void>
+  async info(message: string, ...args: any[]): Promise<void>
   async info(message: string, ...args: any[]): Promise<void> {
     await this.log('info', message, ...args)
   }
 
+  async success(message: string): Promise<void>
+  async success(message: string, ...args: any[]): Promise<void>
   async success(message: string, ...args: any[]): Promise<void> {
     await this.log('success', message, ...args)
   }
 
+  async warn(message: string): Promise<void>
+  async warn(message: string, ...args: any[]): Promise<void>
   async warn(message: string, ...args: any[]): Promise<void> {
     await this.log('warning', message, ...args)
   }
 
+  async error(message: string | Error): Promise<void>
+  async error(message: string | Error, ...args: any[]): Promise<void>
   async error(message: string | Error, ...args: any[]): Promise<void> {
     await this.log('error', message, ...args)
   }
@@ -1583,6 +1669,8 @@ export class Logger {
    * @param message The message for the starting task
    * @param args Optional arguments for formatting
    */
+  async start(message: string): Promise<void>
+  async start(message: string, ...args: any[]): Promise<void>
   async start(message: string, ...args: any[]): Promise<void> {
     if (!this.enabled)
       return
