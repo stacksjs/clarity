@@ -1,3 +1,15 @@
+[Compare changes](https://github.com/stacksjs/clarity/compare/v0.3.21...v0.3.23)
+
+### 🧹 Chores
+
+- release v0.3.23 ([00569ab](https://github.com/stacksjs/clarity/commit/00569ab))
+- improve logger  and add progress (#79) ([2a3fc7a](https://github.com/stacksjs/clarity/commit/2a3fc7a)) ([#79](https://github.com/stacksjs/clarity/issues/79), [#79](https://github.com/stacksjs/clarity/issues/79))
+
+### Contributors
+
+- Michael Vincent Caballero <mike.cabz32@gmail.com>
+- cab-mikee <mike.cabz32@gmail.com>
+
 [Compare changes](https://github.com/stacksjs/clarity/compare/v0.3.20...v0.3.21)
 
 ### 🧹 Chores
