@@ -41,6 +41,7 @@ interface ExtendedLoggerOptions extends LoggerOptions {
   enabled?: boolean
   fancy?: boolean // Enable/disable fancy terminal output
   showTags?: boolean // Enable/disable tags in console output
+  showIcons?: boolean // Enable/disable prefix icons/badges in console output
   tagFormat?: TagFormat // Custom format for tags
   timestampPosition?: 'left' | 'right' // Control timestamp position in console output
   environment?: string // Environment prefix for log entries
@@ -191,6 +192,7 @@ export class Logger {
       fingersCrossed: {},
       enabled: true,
       showTags: false,
+      showIcons: true,
       formatter: undefined,
     }
 
@@ -1078,7 +1080,7 @@ export class Logger {
 
     // Format console output
     if (this.shouldStyleConsole()) {
-      const icon = levelIcons[level]
+      const icon = this.options.showIcons === false ? '' : levelIcons[level]
       const tag = this.options.showTags !== false && this.name ? styles.gray(this.formatTag(this.name)) : ''
 
       // Format the console output based on log level
@@ -1102,7 +1104,7 @@ export class Logger {
             message: baseConsoleText,
             level,
           })
-          console.error(consoleMessage)
+          console.warn(consoleMessage)
           break
         case 'success':
           consoleMessage = this.formatConsoleMessage({
@@ -1260,7 +1262,7 @@ export class Logger {
       const consoleTime = this.formatConsoleTimestamp(new Date())
       console.error(this.formatConsoleMessage({
         timestamp: consoleTime,
-        icon: styles.blue('◐'),
+        icon: this.options.showIcons === false ? '' : styles.blue('◐'),
         tag,
         message: `${styles.cyan(label)}...`,
       }))
@@ -1293,7 +1295,7 @@ export class Logger {
         const tag = this.options.showTags !== false && this.name ? styles.gray(this.formatTag(this.name)) : ''
         console.error(this.formatConsoleMessage({
           timestamp: consoleTime,
-          icon: styles.green('✓'),
+          icon: this.options.showIcons === false ? '' : styles.green('✓'),
           tag,
           message: `${completionMessage}${metadata ? ` ${JSON.stringify(metadata)}` : ''}`,
         }))
@@ -1714,8 +1716,8 @@ export class Logger {
     if (this.shouldStyleConsole()) {
     // Make tag optional based on showTags property and use custom format
       const tag = this.options.showTags !== false && this.name ? styles.gray(this.formatTag(this.name)) : ''
-      const spinnerChar = styles.blue('◐')
-      console.error(`${spinnerChar} ${tag} ${styles.cyan(consoleText)}`)
+      const spinnerPrefix = this.options.showIcons === false ? '' : `${styles.blue('◐')} `
+      console.error(`${spinnerPrefix}${tag} ${styles.cyan(consoleText)}`)
     }
 
     // Log to file directly instead of using this.info()
@@ -1747,7 +1749,9 @@ export class Logger {
     const messageText = barState.message ? ` ${barState.message}` : ''
 
     // Use a simpler icon for progress
-    const icon = isFinished || percent === 100 ? styles.green('✓') : styles.blue('▶')
+    const icon = this.options.showIcons === false
+      ? ''
+      : (isFinished || percent === 100 ? styles.green('✓') : styles.blue('▶'))
 
     // Add tag if enabled
     const tag = this.options.showTags !== false && this.name ? ` ${styles.gray(this.formatTag(this.name))}` : ''

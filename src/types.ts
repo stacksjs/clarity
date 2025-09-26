@@ -140,6 +140,11 @@ export interface LoggerOptions {
    * When true, logs are written to files; when false, logs are console-only
    */
   writeToFile?: boolean
+  /**
+   * Toggle prefix icons/badges in console output (e.g., ✓, ℹ, WARN/ERROR badges)
+   * @default true
+   */
+  showIcons?: boolean
   fingersCrossed?: boolean | {
     activationLevel?: LogLevel
     bufferSize?: number
