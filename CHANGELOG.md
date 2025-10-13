@@ -1,3 +1,15 @@
+[Compare changes](https://github.com/stacksjs/clarity/compare/v0.3.23...v0.3.24)
+
+### 🧹 Chores
+
+- release v0.3.24 ([1b09902](https://github.com/stacksjs/clarity/commit/1b09902))
+- add alias in loadconfig ([0c3999f](https://github.com/stacksjs/clarity/commit/0c3999f))
+- add showIcons indicator ([5160701](https://github.com/stacksjs/clarity/commit/5160701))
+
+### Contributors
+
+- cab-mikee <mike.cabz32@gmail.com>
+
 [Compare changes](https://github.com/stacksjs/clarity/compare/v0.3.21...v0.3.23)
 
 ### 🧹 Chores
