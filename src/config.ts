@@ -53,6 +53,7 @@ async function loadConfig(): Promise<ClarityConfig> {
     // bunfig.loadConfig expects a single options object
     const loadedConfig = await bunfigLoadConfig({
       name: 'clarity',
+      alias: 'logging',
       defaultConfig,
       cwd: process.cwd(),
     }) as Partial<ClarityConfig> | undefined
