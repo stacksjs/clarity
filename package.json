@@ -1,7 +1,7 @@
 {
   "name": "@stacksjs/clarity",
   "type": "module",
-  "version": "0.3.23",
+  "version": "0.3.24",
   "description": "A modern logging & debugging utility. For browser & server.",
   "author": "Chris Breuer <chris@stacksjs.org>",
   "license": "MIT",
@@ -77,7 +77,7 @@
     "postinstall": "bunx git-hooks && bun ./scripts/postinstall.ts"
   },
   "devDependencies": {
-    "@happy-dom/global-registrator": "^18.0.1",
+    "@happy-dom/global-registrator": "^20.0.0",
     "@stacksjs/bumpx": "^0.2.1",
     "@stacksjs/docs": "^0.70.23",
     "@stacksjs/eslint-config": "^4.14.0-beta.3",
