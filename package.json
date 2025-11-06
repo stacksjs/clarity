@@ -87,7 +87,7 @@
     "buddy-bot": "^0.9.11",
     "bumpp": "^10.3.1",
     "bun-git-hooks": "^0.3.1",
-    "bun-plugin-dtsx": "0.21.17",
+    "bun-plugin-dtsx": "0.9.9",
     "bunfig": "^0.15.6",
     "changelogen": "^0.6.2",
     "typescript": "^5.9.3",
