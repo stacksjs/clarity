@@ -118,11 +118,12 @@ export class Logger {
       delete configOptions.timestamp // Remove from config to avoid type error
     }
 
-    // Merge with default config
+    // Merge with default config - but preserve the level from options if provided
     this.config = {
       ...this.config,
       ...configOptions,
       timestamp: hasTimestamp || this.config.timestamp,
+      level: this.options.level, // Use the normalized level from options
     }
 
     this.currentLogFile = this.generateLogFilename()
@@ -1059,6 +1060,10 @@ export class Logger {
   }
 
   private async log(level: LogLevel, message: string | Error, ...args: any[]): Promise<void> {
+    // Check if we should log this level first
+    if (!this.shouldLog(level))
+      return
+
     const timestamp = new Date()
     const consoleTime = this.formatConsoleTimestamp(timestamp)
     const fileTime = this.formatFileTimestamp(timestamp)
@@ -1159,9 +1164,6 @@ export class Logger {
         console.error(errorStack)
       }
     }
-
-    if (!this.shouldLog(level))
-      return
 
     // Create the log entry for file logging
     let logEntry = `${fileTime} ${this.environment}.${level.toUpperCase()}: ${fileText}\n`
