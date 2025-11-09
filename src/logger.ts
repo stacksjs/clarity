@@ -123,7 +123,7 @@ export class Logger {
       ...this.config,
       ...configOptions,
       timestamp: hasTimestamp || this.config.timestamp,
-      level: this.options.level, // Use the normalized level from options
+      level: this.options.level ?? 'info', // Use the normalized level from options with fallback
     }
 
     this.currentLogFile = this.generateLogFilename()
