@@ -1241,7 +1241,7 @@ export class Logger {
       // Log the interruption message at the chosen level
       const method: keyof Pick<Logger, 'debug' | 'info' | 'success' | 'warn' | 'error'>
         = (level === 'warning' ? 'warn' : level) as any
-      void (this[method] as (msg: string) => Promise<void>)(message)
+      void (this[method] as (_msg: string) => Promise<void>)(message)
       // Re-render progress if still active
       if (this.activeProgressBar && this.shouldStyleConsole() && !isBrowserProcess() && process.stdout.isTTY)
         this.renderProgressBar(this.activeProgressBar)

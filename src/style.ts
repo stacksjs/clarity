@@ -1,4 +1,4 @@
-export type TerminalStyle = (text: string) => string
+export type TerminalStyle = (_text: string) => string
 
 export interface TerminalStyles {
   red: TerminalStyle

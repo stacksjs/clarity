@@ -29,6 +29,7 @@
     "bin",
     "node_modules",
     "**/*.test.ts",
-    "test"
+    "test",
+    "pickier.config.ts"
   ]
 }
