@@ -79,12 +79,12 @@
     "postinstall": "bunx git-hooks && bun ./scripts/postinstall.ts"
   },
   "devDependencies": {
-    "@happy-dom/global-registrator": "^20.0.10",
+    "@happy-dom/global-registrator": "^20.7.0",
     "@stacksjs/docs": "^0.70.23",
-    "better-dx": "^0.2.5",
-    "bumpp": "^10.3.1",
+    "better-dx": "^0.2.6",
+    "bumpp": "^10.4.1",
     "changelogen": "^0.6.2",
-    "unocss": "^66.5.9"
+    "unocss": "^66.6.2"
   },
   "overrides": {
     "unconfig": "0.3.10"
