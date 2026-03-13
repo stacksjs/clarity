@@ -2,7 +2,7 @@
 
 ## About
 
-A modern logging & debugging utility. For browser & server.
+Clarity is a modern TypeScript logging and debugging library for both browser and server environments, inspired by the `debug` module. It provides color-coded console output, domain-specific namespaces with `extend()`, performance tracking with timers, log rotation, encrypted log storage, and fingers-crossed buffering. It also includes a full CLI for watching, searching, exporting, and managing logs.
 
 ## Linting
 
