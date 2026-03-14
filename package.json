@@ -82,7 +82,7 @@
     "@happy-dom/global-registrator": "^20.0.10",
     "@stacksjs/docs": "^0.70.23",
     "better-dx": "^0.2.7",
-    "bumpp": "^10.3.1",
+    "bumpp": "^11.0.0",
     "changelogen": "^0.6.2",
     "unocss": "^66.5.9"
   },
