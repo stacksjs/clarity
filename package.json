@@ -84,9 +84,6 @@
     "bumpp": "^10.3.1",
     "changelogen": "^0.6.2"
   },
-  "overrides": {
-    "unconfig": "0.3.10"
-  },
   "git-hooks": {
     "pre-commit": {
       "stagedLint": {
