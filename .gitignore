@@ -15,3 +15,5 @@ test-logs
 test-logs-*
 bin/clarity
 bin/clarity*
+.zed
+.cursor
