@@ -5,15 +5,15 @@
     "": {
       "name": "@stacksjs/clarity",
       "devDependencies": {
-        "@happy-dom/global-registrator": "^20.0.10",
+        "@happy-dom/global-registrator": "^20.8.7",
         "better-dx": "^0.2.7",
-        "bumpp": "^10.3.1",
+        "bumpp": "^10.4.1",
         "changelogen": "^0.6.2",
       },
     },
   },
   "packages": {
-    "@happy-dom/global-registrator": ["@happy-dom/global-registrator@20.8.3", "", { "dependencies": { "@types/node": ">=20.0.0", "happy-dom": "^20.8.3" } }, "sha512-9z6lLr6K6dIFLiB9jI0tKTlYzCComn5RL7L1mN3EdMSCyRQB8I6A0FO/On8yYKkXuunexzPDC98zDflvv2wDrQ=="],
+    "@happy-dom/global-registrator": ["@happy-dom/global-registrator@20.8.7", "", { "dependencies": { "@types/node": ">=20.0.0", "happy-dom": "^20.8.7" } }, "sha512-fOmQ7AQG1xAYmyYeneq5jWSsgHb8YFHY5aDeW2bKIv1gQBYXiEdMvgkoPGs4Q8o2G5UVDKUNyQxuqYuTuXlZMw=="],
 
     "@stacksjs/bumpx": ["@stacksjs/bumpx@0.2.4", "", { "dependencies": { "@stacksjs/clapp": "^0.2.0", "@stacksjs/logsmith": "^0.2.1", "bunfig": "^0.15.6" }, "bin": { "bumpx": "dist/bin/cli.js" } }, "sha512-bt14GhW4QJKqmAgfTyjW0pDblDu+y6+DSX8xva1HnLk2GtLyQe0YXUs51dUvZBFgYVHcHEUijNoj2pivuwIcjQ=="],
 
@@ -117,7 +117,7 @@
 
     "giget": ["giget@2.0.0", "", { "dependencies": { "citty": "^0.1.6", "consola": "^3.4.0", "defu": "^6.1.4", "node-fetch-native": "^1.6.6", "nypm": "^0.6.0", "pathe": "^2.0.3" }, "bin": { "giget": "dist/cli.mjs" } }, "sha512-L5bGsVkxJbJgdnwyuheIunkGatUF/zssUoxxjACCseZYAVbaqdh9Tsmmlkl8vYan09H7sbvKt4pS8GqKLBrEzA=="],
 
-    "happy-dom": ["happy-dom@20.8.3", "", { "dependencies": { "@types/node": ">=20.0.0", "@types/whatwg-mimetype": "^3.0.2", "@types/ws": "^8.18.1", "entities": "^7.0.1", "whatwg-mimetype": "^3.0.0", "ws": "^8.18.3" } }, "sha512-lMHQRRwIPyJ70HV0kkFT7jH/gXzSI7yDkQFe07E2flwmNDFoWUTRMKpW2sglsnpeA7b6S2TJPp98EbQxai8eaQ=="],
+    "happy-dom": ["happy-dom@20.8.7", "", { "dependencies": { "@types/node": ">=20.0.0", "@types/whatwg-mimetype": "^3.0.2", "@types/ws": "^8.18.1", "entities": "^7.0.1", "whatwg-mimetype": "^3.0.0", "ws": "^8.18.3" } }, "sha512-7wfBi+UqulQlyLcis+9a+hTK0A/fMO4QKP6w6J9HnadXVkRdOvGf/N5G4XVpfgCYfnY7oKazlOSdWmsfatNSLQ=="],
 
     "is-docker": ["is-docker@3.0.0", "", { "bin": { "is-docker": "cli.js" } }, "sha512-eljcgEDlEns/7AXFosB5K/2nCM4P7FQPkGc/DWLy5rmFEWvZayGrik1d9/QIY5nJ4f9YsVvBkA6kJpHn9rISdQ=="],
 
