@@ -41,5 +41,3 @@ features:
     icon: "🛡️"
     details: "Used in production by the entire Stacks.js ecosystem and numerous enterprise applications."
 ---
-
-<Home />

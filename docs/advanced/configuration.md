@@ -55,22 +55,22 @@ Environment variables provide a way to configure Clarity without modifying code:
 
 ```bash
 # Set log level
-export CLARITY_LOG_LEVEL=debug
+export CLARITY*LOG*LEVEL=debug
 
 # Set log directory
-export CLARITY_LOG_DIR=/var/log/myapp
+export CLARITY*LOG*DIR=/var/log/myapp
 
 # Enable verbose mode
-export CLARITY_VERBOSE=true
+export CLARITY*VERBOSE=true
 
 # Disable colored output
-export CLARITY_COLORS=false
+export CLARITY*COLORS=false
 
 # Set output format
-export CLARITY_FORMAT=json
+export CLARITY*FORMAT=json
 
 # Disable timestamps
-export CLARITY_TIMESTAMP=false
+export CLARITY*TIMESTAMP=false
 ```
 
 Environment variables take precedence over configuration files.
@@ -123,7 +123,7 @@ const envConfig = isDevelopment()
     ? {
         level: 'error', // Only log errors in tests
         format: 'json',
-        enabled: process.env.LOG_IN_TESTS === 'true',
+        enabled: process.env.LOG*IN*TESTS === 'true',
       }
     : isProduction()
       ? {

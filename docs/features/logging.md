@@ -139,9 +139,9 @@ Clarity can interpret lightweight Markdown in your log messages for improved rea
   - Links: `[text](url)`
     - Local file paths (e.g. `./README.md`) are detected; when your terminal supports hyperlinks (OSC 8), they are clickable.
     - HTTP(S)/file:// links become clickable when supported, otherwise only the label is shown.
-  - Inline code: `` `code` `` (rendered with subtle background)
+  - Inline code: ```code``` (rendered with subtle background)
   - Bold: `**text**`
-  - Italic: `*text*` or `_text_`
+  - Italic: `*text*` or `*text*`
   - Strikethrough: `~text~`
 
 - **Console vs file output:**

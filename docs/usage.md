@@ -123,7 +123,7 @@ if (logger.shouldLog('debug')) {
 
 // Development-only logging
 const devLogger = new Logger('dev', {
-  enabled: process.env.NODE_ENV !== 'production',
+  enabled: process.env.NODE*ENV !== 'production',
 })
 ```
 
@@ -264,7 +264,7 @@ async function processQueue() {
 ```ts
 const debugLogger = new Logger('debug', {
   level: 'debug',
-  enabled: process.env.NODE_ENV !== 'production',
+  enabled: process.env.NODE*ENV !== 'production',
 })
 
 // Component debugging
@@ -327,7 +327,7 @@ Set up encryption keys securely:
 
 ```bash
 # In your .env file or environment
-LOG_ENCRYPTION_KEY="your-secure-key"
+LOG*ENCRYPTION*KEY="your-secure-key"
 ```
 
 ```ts
@@ -525,13 +525,13 @@ Use environment variables for flexible configuration:
 
 ```ts
 const logger = new Logger('app', {
-  level: process.env.LOG_LEVEL || 'info',
-  format: process.env.LOG_FORMAT || 'text',
-  logDirectory: process.env.LOG_DIR || './logs',
+  level: process.env.LOG*LEVEL || 'info',
+  format: process.env.LOG*FORMAT || 'text',
+  logDirectory: process.env.LOG*DIR || './logs',
   rotation: {
-    maxSize: Number.parseInt(process.env.LOG_MAX_SIZE || '10485760'),
-    maxFiles: Number.parseInt(process.env.LOG_MAX_FILES || '5'),
-    compress: process.env.LOG_COMPRESS === 'true',
+    maxSize: Number.parseInt(process.env.LOG*MAX*SIZE || '10485760'),
+    maxFiles: Number.parseInt(process.env.LOG*MAX*FILES || '5'),
+    compress: process.env.LOG*COMPRESS === 'true',
     encrypt: process.env.LOG_ENCRYPT === 'true'
       ? {
           algorithm: 'aes-256-gcm',

@@ -71,7 +71,7 @@ import { Logger } from 'clarity'
 const logger = new Logger('app', {
   rotation: {
     frequency: 'daily',
-    maxSize: 10 * 1024 * 1024, // 10MB
+    maxSize: 10 _ 1024 _ 1024, // 10MB
     maxFiles: 7,
     compress: true,
   },
@@ -192,4 +192,4 @@ const logger = new Logger('cloud-app', {
 })
 ```
 
-*Note: Custom storage adapters require implementation of specific interfaces. See the API documentation for details.*
+_Note: Custom storage adapters require implementation of specific interfaces. See the API documentation for details._

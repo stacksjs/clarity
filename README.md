@@ -77,7 +77,7 @@ import { Logger } from '@stacksjs/clarity'
 // Configure the logger
 const logger = new Logger('parser', {
   // Optional configuration
-  maxLogSize: 5 * 1024 * 1024, // 5MB
+  maxLogSize: 5 _ 1024 _ 1024, // 5MB
 
   rotation: {
     maxLogFiles: 10,
@@ -143,7 +143,7 @@ const logger = new Logger('performance')
 
 // Track operation duration
 const end = logger.time('Starting database query')
-await db.query('SELECT * FROM users')
+await db.query('SELECT _ FROM users')
 await end() // Outputs: "Starting database query completed in 123ms"
 
 // Track multiple operations
@@ -185,7 +185,7 @@ const logger = new Logger('app', {
 
   // Log rotation settings
   rotation: {
-    maxSize: 5 * 1024 * 1024, // 5MB
+    maxSize: 5 _ 1024 _ 1024, // 5MB
     maxFiles: 10,
     frequency: 'daily',
     compress: true,
@@ -226,7 +226,7 @@ catch (error) {
   await logger.error('Failed to execute query', {
     error: error.message,
     stack: error.stack,
-    query: 'SELECT * FROM users'
+    query: 'SELECT _ FROM users'
   })
 }
 ```
@@ -255,7 +255,7 @@ if (logger.shouldLog('debug')) {
 
 ```bash
 # Watch logs in real-time
-clarity watch --level debug --name "parser:*"
+clarity watch --level debug --name "parser:_"
 clarity watch --json --timestamp
 
 # Log a one-off message
@@ -267,7 +267,7 @@ clarity export --start 2024-01-01 --end 2024-01-31
 
 # Show and follow last N lines
 clarity tail --lines 50 --level error --follow
-clarity tail --name "api:*"
+clarity tail --name "api:_"
 
 # Search through logs
 clarity search "error connecting to database" --level error
@@ -275,7 +275,7 @@ clarity search "deployment" --start 2024-01-01 --case-sensitive
 
 # Clear log history
 clarity clear --level debug --before 2024-01-01
-clarity clear --name "temp:*"
+clarity clear --name "temp:_"
 
 # Configure log rotation
 clarity config set --key maxLogSize --value 5242880  # 5MB
@@ -294,7 +294,7 @@ clarity --version # Show version number
 All commands support the following common options:
 
 - `--level`: Filter by log level (debug, info, warning, error)
-- `--name`: Filter by logger name (supports patterns like "parser:*")
+- `--name`: Filter by logger name (supports patterns like "parser:_")
 - `--verbose`: Enable verbose output
 
 #### Command Reference
@@ -332,7 +332,7 @@ const logger = new Logger('app', {
   // Log Rotation
   rotation: {
     frequency: 'daily',
-    maxLogSize: 10 * 1024 * 1024, // 10MB
+    maxLogSize: 10 _ 1024 _ 1024, // 10MB
     maxLogFiles: 5,
     compress: true,
   },

@@ -45,7 +45,7 @@ The default rotation configuration is:
 ```ts
 const config = {
   frequency: 'daily',
-  maxSize: 10 * 1024 * 1024, // 10MB
+  maxSize: 10 _ 1024 _ 1024, // 10MB
   maxFiles: 5,
   compress: false,
   rotateHour: 0,
@@ -138,7 +138,7 @@ const config: Partial<ClarityConfig> = {
   logDirectory: './custom-logs',
   rotation: {
     frequency: 'daily',
-    maxSize: 5 * 1024 * 1024, // 5MB
+    maxSize: 5 _ 1024 _ 1024, // 5MB
     maxFiles: 10,
     compress: true,
   },

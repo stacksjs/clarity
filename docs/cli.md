@@ -233,16 +233,16 @@ The CLI respects these environment variables:
 
 ```bash
 # General Settings
-CLARITY_CONFIG=/path/to/config.json  # Custom config file
-CLARITY_LOG_LEVEL=debug             # Default log level
-CLARITY_NO_COLOR=1                  # Disable colors
+CLARITY*CONFIG=/path/to/config.json  # Custom config file
+CLARITY*LOG*LEVEL=debug             # Default log level
+CLARITY*NO*COLOR=1                  # Disable colors
 
 # Filtering
-CLARITY_FILTER_LEVEL=error         # Default level filter
-CLARITY_FILTER_NAME="api:*"        # Default name filter
+CLARITY*FILTER*LEVEL=error         # Default level filter
+CLARITY*FILTER*NAME="api:*"        # Default name filter
 
 # Output
-CLARITY_JSON=1                     # Default to JSON output
+CLARITY*JSON=1                     # Default to JSON output
 CLARITY_TIMESTAMP=1               # Include timestamps
 ```
 
@@ -251,24 +251,24 @@ CLARITY_TIMESTAMP=1               # Include timestamps
 1. **Command Composition**
 
    ```bash
-   # Pipe search results to export
+# Pipe search results to export
    clarity search "error" | clarity export --output errors.json
 
-   # Watch filtered logs
+# Watch filtered logs
    clarity watch --level error --name "api:*" | grep "timeout"
    ```
 
 2. **Automated Monitoring**
 
    ```bash
-   # Watch and notify on errors
+# Watch and notify on errors
    clarity watch --level error --json | jq -r '.message' | xargs -I {} notify-send "Error: {}"
    ```
 
 3. **Log Rotation Management**
 
    ```bash
-   # Clear old logs daily
+# Clear old logs daily
    0 0 * * * clarity clear --before "$(date -d '7 days ago' -I)" --force
    ```
 

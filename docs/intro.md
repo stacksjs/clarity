@@ -131,7 +131,7 @@ clarity tail --lines 50 --follow
 
    ```bash
    bun install clarity
-   # or
+# or
    npm install clarity
    ```
 
@@ -177,7 +177,7 @@ We welcome contributions! Please see our [Contributing Guide](https://github.com
 
 ## Postcardware
 
-Two things are true: Stacks OSS will always stay open-source, and we do love to receive postcards from wherever Stacks is used! _We also publish them on our website._
+Two things are true: Stacks OSS will always stay open-source, and we do love to receive postcards from wherever Stacks is used! *We also publish them on our website.*
 
 Our address: Stacks.js, 12665 Village Ln #2306, Playa Vista, CA 90094 🌎
 

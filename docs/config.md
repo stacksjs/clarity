@@ -40,7 +40,7 @@ const logger = new Logger('app', {
 
   // Security
   encrypt: true,
-  encryptionKey: process.env.LOG_ENCRYPTION_KEY,
+  encryptionKey: process.env.LOG*ENCRYPTION*KEY,
 })
 ```
 
@@ -55,14 +55,14 @@ DEBUG=api:*              # Enable all API-related logs
 DEBUG=api:auth           # Enable only API auth logs
 
 # Log Levels
-LOG_LEVEL=debug         # Show all logs
-LOG_LEVEL=error         # Show only errors
+LOG*LEVEL=debug         # Show all logs
+LOG*LEVEL=error         # Show only errors
 
 # Configuration
-CLARITY_MAX_SIZE=5242880    # 5MB max file size
-CLARITY_MAX_FILES=10        # Keep 10 rotated files
-CLARITY_COMPRESS=true       # Compress rotated files
-CLARITY_LOG_DIR=/logs      # Custom log directory
+CLARITY*MAX*SIZE=5242880    # 5MB max file size
+CLARITY*MAX*FILES=10        # Keep 10 rotated files
+CLARITY*COMPRESS=true       # Compress rotated files
+CLARITY*LOG*DIR=/logs      # Custom log directory
 ```
 
 ### 3. CLI Configuration
@@ -160,7 +160,7 @@ const logger = new Logger('app', {
 const logger = new Logger('app', {
   // Encryption
   encrypt: true,
-  encryptionKey: process.env.LOG_ENCRYPTION_KEY,
+  encryptionKey: process.env.LOG*ENCRYPTION*KEY,
   algorithm: 'aes-256-gcm',
 
   // Access control
@@ -185,8 +185,8 @@ Settings are applied in this order (later overrides earlier):
 
    ```ts
    const logger = new Logger('app', {
-     level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
-     format: process.env.NODE_ENV === 'production' ? 'json' : 'text'
+     level: process.env.NODE*ENV === 'production' ? 'info' : 'debug',
+     format: process.env.NODE*ENV === 'production' ? 'json' : 'text'
    })
    ```
 
@@ -195,7 +195,7 @@ Settings are applied in this order (later overrides earlier):
    ```ts
    const logger = new Logger('app', {
      // Use environment variables for sensitive data
-     encryptionKey: process.env.LOG_ENCRYPTION_KEY,
+     encryptionKey: process.env.LOG*ENCRYPTION_KEY,
 
      // Mask sensitive data in logs
      formatters: {
