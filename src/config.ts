@@ -45,12 +45,27 @@ export const defaultConfig: ClarityConfig = {
   writeToFile: false,
 }
 
-// Load config with error handling
-async function loadConfig(): Promise<ClarityConfig> {
-  try {
-    // const isVerbose = process.env.CLARITY_VERBOSE === 'true' || defaultConfig.verbose
+// `config` is exported synchronously, populated from `defaultConfig` and
+// **mutated in place** when the user's `clarity.config.ts` (if any) finishes
+// loading via `configReady`.
+//
+// Why not the obvious `export const config = await loadConfig()`: top-level
+// await turns this module — and therefore *every* dependent of
+// `@stacksjs/clarity` — into an async-init module. Anything bundled along
+// with clarity inherits the TLA, so a single misbehaving config file (or a
+// transient `bunfig` hang) can freeze importers like `@stacksjs/bunpress`
+// at module-evaluation time. Keeping the export synchronous decouples
+// "logger usable" from "user config resolved".
+export const config: ClarityConfig = { ...defaultConfig }
 
-    // bunfig.loadConfig expects a single options object
+/**
+ * Resolves once the user's `clarity.config.{ts,js,json}` (if present) has
+ * been merged onto `config`. Callers that need the resolved values can
+ * `await configReady`; everyone else (the common case) just uses `config`
+ * with default values until the project's overrides land.
+ */
+export const configReady: Promise<ClarityConfig> = (async () => {
+  try {
     const loadedConfig = await bunfigLoadConfig({
       name: 'clarity',
       alias: 'logging',
@@ -58,13 +73,11 @@ async function loadConfig(): Promise<ClarityConfig> {
       cwd: process.cwd(),
     }) as Partial<ClarityConfig> | undefined
 
-    return { ...defaultConfig, ...(loadedConfig || {}) }
+    if (loadedConfig)
+      Object.assign(config, loadedConfig)
   }
   catch {
-    // If anything fails, return default config
-    return defaultConfig
+    // Leave defaults in place — clarity remains fully functional.
   }
-}
-
-// eslint-disable-next-line antfu/no-top-level-await
-export const config: ClarityConfig = await loadConfig()
+  return config
+})()
