@@ -1,3 +1,17 @@
+[Compare changes](https://github.com/stacksjs/clarity/compare/v0.3.26...v0.3.27)
+
+### 🐛 Bug Fixes
+
+- lazy-import bunfig inside configReady to break circular import ([48e9645](https://github.com/stacksjs/clarity/commit/48e9645))
+
+### 🧹 Chores
+
+- release v0.3.27 ([01a3154](https://github.com/stacksjs/clarity/commit/01a3154))
+
+### Contributors
+
+- Chris <chrisbreuer93@gmail.com>
+
 [Compare changes](https://github.com/stacksjs/clarity/compare/v0.3.25...v0.3.26)
 
 ### 🐛 Bug Fixes

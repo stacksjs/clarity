@@ -1,7 +1,7 @@
 {
   "name": "@stacksjs/clarity",
   "type": "module",
-  "version": "0.3.26",
+  "version": "0.3.27",
   "description": "A modern logging & debugging utility. For browser & server.",
   "author": "Chris Breuer <chris@stacksjs.org>",
   "license": "MIT",
