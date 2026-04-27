@@ -81,6 +81,9 @@
     "typecheck": "bun --bun tsc --noEmit",
     "postinstall": "bunx git-hooks && bun ./scripts/postinstall.ts"
   },
+  "dependencies": {
+    "bunfig": "^0.15.6"
+  },
   "devDependencies": {
     "@happy-dom/global-registrator": "^20.0.10",
     "better-dx": "^0.2.7",
