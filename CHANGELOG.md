@@ -1,3 +1,50 @@
+[Compare changes](https://github.com/stacksjs/clarity/compare/v0.3.24...v0.3.25)
+
+### 🐛 Bug Fixes
+
+- drop top-level await on loadConfig in module init ([6a35cdf](https://github.com/stacksjs/clarity/commit/6a35cdf))
+
+### 🧹 Chores
+
+- release v0.3.25 ([5281d50](https://github.com/stacksjs/clarity/commit/5281d50))
+- add release:patch/minor/major scripts ([277d699](https://github.com/stacksjs/clarity/commit/277d699))
+- use Pantry action for publish-commit and add job dependencies ([64f0b5b](https://github.com/stacksjs/clarity/commit/64f0b5b))
+- update better-dx to ^0.2.7 ([b1a54cf](https://github.com/stacksjs/clarity/commit/b1a54cf))
+- enrich CLAUDE.md with detailed project context from README ([a40e933](https://github.com/stacksjs/clarity/commit/a40e933))
+- update CLAUDE.md with project context and crosswind details ([783d5e0](https://github.com/stacksjs/clarity/commit/783d5e0))
+- add proper claude code guidelines ([375464d](https://github.com/stacksjs/clarity/commit/375464d))
+- use pantry monorepo action instead of pantry-setup ([5010a9c](https://github.com/stacksjs/clarity/commit/5010a9c))
+- wip ([6161e93](https://github.com/stacksjs/clarity/commit/6161e93))
+- wip ([296245f](https://github.com/stacksjs/clarity/commit/296245f))
+- wip ([cca0012](https://github.com/stacksjs/clarity/commit/cca0012))
+- wip ([19aa29e](https://github.com/stacksjs/clarity/commit/19aa29e))
+- wip ([a2730f8](https://github.com/stacksjs/clarity/commit/a2730f8))
+- wip ([9e4cec6](https://github.com/stacksjs/clarity/commit/9e4cec6))
+- wip ([fb5b4ed](https://github.com/stacksjs/clarity/commit/fb5b4ed))
+- wip ([310668f](https://github.com/stacksjs/clarity/commit/310668f))
+- wip ([a906d72](https://github.com/stacksjs/clarity/commit/a906d72))
+- wip ([25059fc](https://github.com/stacksjs/clarity/commit/25059fc))
+- wip ([3768ebf](https://github.com/stacksjs/clarity/commit/3768ebf))
+- wip ([79e18ee](https://github.com/stacksjs/clarity/commit/79e18ee))
+- **deps**: update dependency @types/bun to ^1.3.3 (#684) ([ef9ebbf](https://github.com/stacksjs/clarity/commit/ef9ebbf)) ([#684](https://github.com/stacksjs/clarity/issues/684), [#684](https://github.com/stacksjs/clarity/issues/684))
+- **deps**: update all non-major dependencies (#680) ([3abd29b](https://github.com/stacksjs/clarity/commit/3abd29b)) ([#680](https://github.com/stacksjs/clarity/issues/680), [#680](https://github.com/stacksjs/clarity/issues/680))
+- **deps**: update dependency actions/checkout to v6.0.0 (#681) ([ff2c6e5](https://github.com/stacksjs/clarity/commit/ff2c6e5)) ([#681](https://github.com/stacksjs/clarity/issues/681), [#681](https://github.com/stacksjs/clarity/issues/681))
+- **deps**: update actions/checkout action to v6 (#682) ([9ff4120](https://github.com/stacksjs/clarity/commit/9ff4120)) ([#682](https://github.com/stacksjs/clarity/issues/682), [#682](https://github.com/stacksjs/clarity/issues/682))
+- **deps**: update all non-major dependencies (#678) ([e651f40](https://github.com/stacksjs/clarity/commit/e651f40)) ([#678](https://github.com/stacksjs/clarity/issues/678), [#678](https://github.com/stacksjs/clarity/issues/678))
+- **deps**: update all non-major dependencies (#633) ([005b983](https://github.com/stacksjs/clarity/commit/005b983)) ([#633](https://github.com/stacksjs/clarity/issues/633), [#633](https://github.com/stacksjs/clarity/issues/633))
+- wip ([eaabaa0](https://github.com/stacksjs/clarity/commit/eaabaa0))
+- log check first ([2ed3f44](https://github.com/stacksjs/clarity/commit/2ed3f44))
+- **deps**: update dependency @happy-dom/global-registrator to 20.0.10 (#134) ([e3f7d35](https://github.com/stacksjs/clarity/commit/e3f7d35)) ([#134](https://github.com/stacksjs/clarity/issues/134), [#134](https://github.com/stacksjs/clarity/issues/134))
+- **deps**: update dependency @happy-dom/global-registrator to v20 (#136) ([996debf](https://github.com/stacksjs/clarity/commit/996debf)) ([#136](https://github.com/stacksjs/clarity/issues/136), [#136](https://github.com/stacksjs/clarity/issues/136))
+- improve og-image and cover ([ce85e2a](https://github.com/stacksjs/clarity/commit/ce85e2a))
+
+### Contributors
+
+- Chris <chrisbreuer93@gmail.com>
+- cab-mikee <mike.cabz32@gmail.com>
+- glennmichael123 <gtorregosa@gmail.com>
+- renovate[bot] <29139614+renovate[bot]@users.noreply.github.com>
+
 [Compare changes](https://github.com/stacksjs/clarity/compare/v0.3.23...v0.3.24)
 
 ### 🧹 Chores
