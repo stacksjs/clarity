@@ -1,3 +1,14 @@
+[Compare changes](https://github.com/stacksjs/clarity/compare/v0.3.27...v0.3.28)
+
+### 🧹 Chores
+
+- release v0.3.28 ([e10b1ec](https://github.com/stacksjs/clarity/commit/e10b1ec))
+- drop bunfig externalize from build ([e20f46f](https://github.com/stacksjs/clarity/commit/e20f46f))
+
+### Contributors
+
+- Chris <chrisbreuer93@gmail.com>
+
 [Compare changes](https://github.com/stacksjs/clarity/compare/v0.3.26...v0.3.27)
 
 ### 🐛 Bug Fixes
