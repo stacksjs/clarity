@@ -1,7 +1,13 @@
 import type { ClarityConfig } from './types'
 import { join, relative, resolve } from 'node:path'
 import process from 'node:process'
-import { loadConfig as bunfigLoadConfig } from 'bunfig'
+
+// `bunfig` is required dynamically inside `configReady` to break the
+// circular import chain. bunfig depends on clarity (`Logger` for its own
+// debug output), so a static `import { loadConfig } from 'bunfig'` here
+// would create a cycle: clarity → bunfig → clarity → TDZ on `Logger`.
+// Resolving bunfig lazily on first call sidesteps that — clarity's main
+// module finishes evaluating before bunfig is ever touched.
 
 // Get project root directory (where the package.json is located)
 function getProjectRoot(filePath?: string, options: { relative?: boolean } = {}): string {
@@ -66,6 +72,7 @@ export const config: ClarityConfig = { ...defaultConfig }
  */
 export const configReady: Promise<ClarityConfig> = (async () => {
   try {
+    const { loadConfig: bunfigLoadConfig } = await import('bunfig')
     const loadedConfig = await bunfigLoadConfig({
       name: 'clarity',
       alias: 'logging',
