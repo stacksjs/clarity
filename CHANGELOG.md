@@ -1,3 +1,30 @@
+[Compare changes](https://github.com/stacksjs/clarity/compare/v0.3.25...v0.3.26)
+
+### 🐛 Bug Fixes
+
+- externalize bunfig to break recursive clarity bundling ([523bd9a](https://github.com/stacksjs/clarity/commit/523bd9a))
+- drop top-level await on loadConfig in module init ([706d84f](https://github.com/stacksjs/clarity/commit/706d84f))
+
+### 🧹 Chores
+
+- release v0.3.26 ([aa3a46a](https://github.com/stacksjs/clarity/commit/aa3a46a))
+- release v0.3.25 ([7cf1165](https://github.com/stacksjs/clarity/commit/7cf1165))
+- add release:patch/minor/major scripts ([940a4ec](https://github.com/stacksjs/clarity/commit/940a4ec))
+- fresh install to pick up pickier 0.1.21 ([32f85e5](https://github.com/stacksjs/clarity/commit/32f85e5))
+- auto-fix lint errors ([d9f639f](https://github.com/stacksjs/clarity/commit/d9f639f))
+- include md in pickier lint extensions ([927be8f](https://github.com/stacksjs/clarity/commit/927be8f))
+- update dependencies ([9fbb003](https://github.com/stacksjs/clarity/commit/9fbb003))
+- repo cleanup and modernization ([b643b4c](https://github.com/stacksjs/clarity/commit/b643b4c))
+- remove unocss ([ebed86e](https://github.com/stacksjs/clarity/commit/ebed86e))
+- remove @stacksjs/docs ([30cbe32](https://github.com/stacksjs/clarity/commit/30cbe32))
+- remove .zed and .cursor folders ([563aaca](https://github.com/stacksjs/clarity/commit/563aaca))
+- remove redundant docs/.vitepress ([0f16f90](https://github.com/stacksjs/clarity/commit/0f16f90))
+
+### Contributors
+
+- Chris <chrisbreuer93@gmail.com>
+- glennmichael123 <gtorregosa@gmail.com>
+
 [Compare changes](https://github.com/stacksjs/clarity/compare/v0.3.24...v0.3.25)
 
 ### 🐛 Bug Fixes
