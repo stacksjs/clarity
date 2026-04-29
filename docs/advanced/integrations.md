@@ -145,7 +145,7 @@ const logger = new Logger('app', {
 // Add CloudWatch transport
 const cloudwatchTransport = new CloudWatchTransport({
   logGroupName: '/app/api',
-  logStreamName: `${process.env.NODE_ENV}-${new Date().toISOString().split('T')[0]}`,
+  logStreamName: `${process.env.NODE_ENV}-${new Date().toISOString().split('T').at(0)}`,
   region: 'us-west-2',
 })
 

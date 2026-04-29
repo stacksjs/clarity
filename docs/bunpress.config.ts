@@ -1,6 +1,6 @@
 import type { BunPressOptions } from '@stacksjs/bunpress'
 
-export default {
+const config: BunPressOptions = {
   verbose: false,
   docsDir: './docs',
   outDir: './dist',
@@ -151,4 +151,6 @@ export default {
     siteId: 'CLARITY',
     honorDNT: true,
   },
-} satisfies BunPressOptions
+}
+
+export default config
