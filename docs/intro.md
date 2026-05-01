@@ -204,4 +204,3 @@ Made with 💙
 <!-- Badges -->
 
 <!-- [codecov-src]: https://img.shields.io/codecov/c/gh/stacksjs/clarity/main?style=flat-square
-[codecov-href]: https://codecov.io/gh/stacksjs/clarity -->
