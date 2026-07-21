@@ -1,10 +1,19 @@
 import { dts } from 'bun-plugin-dtsx'
 
 await Bun.build({
-  entrypoints: ['src/index.ts', 'bin/cli.ts'],
+  entrypoints: ['src/index.ts'],
   outdir: './dist',
-  target: 'bun',
+  format: 'esm',
   plugins: [dts()],
+  splitting: true,
+  target: 'node',
+})
+
+await Bun.build({
+  entrypoints: ['bin/cli.ts'],
+  outdir: './dist/bin',
+  format: 'esm',
+  target: 'node',
 })
 
 await Bun.build({
