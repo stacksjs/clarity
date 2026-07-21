@@ -85,7 +85,7 @@
   },
   "devDependencies": {
     "@happy-dom/global-registrator": "^20.0.10",
-    "better-dx": "^0.2.15",
+    "better-dx": "^0.2.20",
     "bumpp": "^10.3.1",
     "changelogen": "^0.6.2"
   },
