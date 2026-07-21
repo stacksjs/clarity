@@ -1,3 +1,18 @@
+[Compare changes](https://github.com/stacksjs/clarity/compare/v0.3.29...v0.3.30)
+
+## 🐛 Bug Fixes
+
+- **build**: emit package declarations ([99394b6](https://github.com/stacksjs/clarity/commit/99394b6)) _(by Chris <chrisbreuer93@gmail.com>)_
+
+## 🧹 Chores
+
+- release v0.3.30 ([1f62b20](https://github.com/stacksjs/clarity/commit/1f62b20)) _(by Chris <chrisbreuer93@gmail.com>)_
+- **deps**: update better-dx ([01bfd69](https://github.com/stacksjs/clarity/commit/01bfd69)) _(by Chris <chrisbreuer93@gmail.com>)_
+
+## Contributors
+
+- _Chris <chrisbreuer93@gmail.com>_
+
 [Compare changes](https://github.com/stacksjs/clarity/compare/v0.3.28...v0.3.29)
 
 ## 🐛 Bug Fixes
