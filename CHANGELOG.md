@@ -1,3 +1,17 @@
+[Compare changes](https://github.com/stacksjs/clarity/compare/v0.3.30...v0.3.31)
+
+## 🐛 Bug Fixes
+
+- **build**: publish resolvable package entry ([ae631c4](https://github.com/stacksjs/clarity/commit/ae631c4)) _(by Chris <chrisbreuer93@gmail.com>)_
+
+## 🧹 Chores
+
+- release v0.3.31 ([4652995](https://github.com/stacksjs/clarity/commit/4652995)) _(by Chris <chrisbreuer93@gmail.com>)_
+
+## Contributors
+
+- _Chris <chrisbreuer93@gmail.com>_
+
 [Compare changes](https://github.com/stacksjs/clarity/compare/v0.3.29...v0.3.30)
 
 ## 🐛 Bug Fixes
