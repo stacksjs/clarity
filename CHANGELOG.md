@@ -1,3 +1,45 @@
+[Compare changes](https://github.com/stacksjs/clarity/compare/v0.3.28...v0.3.29)
+
+## 🐛 Bug Fixes
+
+- remove consumer postinstall hook ([c1f57ea](https://github.com/stacksjs/clarity/commit/c1f57ea)) _(by Chris <chrisbreuer93@gmail.com>)_
+- **scripts**: stop double-generating CHANGELOG on release ([b432ae1](https://github.com/stacksjs/clarity/commit/b432ae1)) _(by Glenn Michael Torregosa <gtorregosa@gmail.com>)_
+- add setup-bun to publish-commit job ([02407c3](https://github.com/stacksjs/clarity/commit/02407c3)) _(by glennmichael123 <gtorregosa@gmail.com>)_
+
+## 🤖 Continuous Integration
+
+- drop redundant setup-bun (pantry installs bun via deps.yaml) ([4e71854](https://github.com/stacksjs/clarity/commit/4e71854)) _(by glennmichael123 <gtorregosa@gmail.com>)_
+
+## 🧹 Chores
+
+- release v0.3.29 ([db59fae](https://github.com/stacksjs/clarity/commit/db59fae)) _(by Chris <chrisbreuer93@gmail.com>)_
+- upgrade to TypeScript 7 ([847d8b3](https://github.com/stacksjs/clarity/commit/847d8b3)) _(by Chris <chrisbreuer93@gmail.com>)_
+- **deps**: refresh bun.lock to pick up pickier 0.1.37 ([0ae246f](https://github.com/stacksjs/clarity/commit/0ae246f)) _(by glennmichael123 <gtorregosa@gmail.com>)_
+- **deps**: refresh bun.lock to pick up pickier 0.1.35 ([68b0e77](https://github.com/stacksjs/clarity/commit/68b0e77)) _(by glennmichael123 <gtorregosa@gmail.com>)_
+- **deps**: refresh bun.lock to pick up pickier 0.1.33 ([dc5870e](https://github.com/stacksjs/clarity/commit/dc5870e)) _(by glennmichael123 <gtorregosa@gmail.com>)_
+- **deps**: refresh bun.lock to pick up @stacksjs/logsmith 0.2.3 ([3d8e426](https://github.com/stacksjs/clarity/commit/3d8e426)) _(by glennmichael123 <gtorregosa@gmail.com>)_
+- **deps**: refresh bun.lock to pick up buddy-bot 0.9.20 ([ef84bc4](https://github.com/stacksjs/clarity/commit/ef84bc4)) _(by glennmichael123 <gtorregosa@gmail.com>)_
+- **deps**: bump better-dx to ^0.2.15 ([c385f4d](https://github.com/stacksjs/clarity/commit/c385f4d)) _(by glennmichael123 <gtorregosa@gmail.com>)_
+- ignore pantry directory ([07d0d1e](https://github.com/stacksjs/clarity/commit/07d0d1e)) _(by glennmichael123 <gtorregosa@gmail.com>)_
+- **ci**: bump actions/checkout to v6, actions/cache to v5 ([71709f3](https://github.com/stacksjs/clarity/commit/71709f3)) _(by glennmichael123 <gtorregosa@gmail.com>)_
+- refresh bun.lock to pick up bun-plugin-dtsx@0.9.18 ([8fc303a](https://github.com/stacksjs/clarity/commit/8fc303a)) _(by glennmichael123 <gtorregosa@gmail.com>)_
+- refresh bun.lock and apply pickier --fix ([0b22024](https://github.com/stacksjs/clarity/commit/0b22024)) _(by glennmichael123 <gtorregosa@gmail.com>)_
+- refresh bun.lock ([f888831](https://github.com/stacksjs/clarity/commit/f888831)) _(by glennmichael123 <gtorregosa@gmail.com>)_
+- lint:fix ([64349d7](https://github.com/stacksjs/clarity/commit/64349d7)) _(by glennmichael123 <gtorregosa@gmail.com>)_
+- refresh bun.lock to pick up latest pickier ([5d6a88b](https://github.com/stacksjs/clarity/commit/5d6a88b)) _(by glennmichael123 <gtorregosa@gmail.com>)_
+- fix CI errors ([b6c4451](https://github.com/stacksjs/clarity/commit/b6c4451)) _(by glennmichael123 <gtorregosa@gmail.com>)_
+- fresh install to pick up dtsx 0.9.14 and bunfig 0.15.9 ([5803cb9](https://github.com/stacksjs/clarity/commit/5803cb9)) _(by glennmichael123 <gtorregosa@gmail.com>)_
+
+## ⏪ Reverts
+
+- keep staged-lint kebab + bunx gitlint shorthand ([5b70fea](https://github.com/stacksjs/clarity/commit/5b70fea)) _(by glennmichael123 <gtorregosa@gmail.com>)_
+
+## Contributors
+
+- _Chris <chrisbreuer93@gmail.com>_
+- _Glenn Michael Torregosa <gtorregosa@gmail.com>_
+- _glennmichael123 <gtorregosa@gmail.com>_
+
 [Compare changes](https://github.com/stacksjs/clarity/compare/v0.3.27...v0.3.28)
 
 ### 🧹 Chores
