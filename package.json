@@ -78,8 +78,7 @@
     "dev:docs": "bun --bun vitepress dev docs",
     "build:docs": "bun --bun vitepress build docs",
     "preview:docs": "bun --bun vitepress preview docs",
-    "typecheck": "bun --bun tsc --noEmit",
-    "postinstall": "bunx git-hooks && bun ./scripts/postinstall.ts"
+    "typecheck": "bun --bun tsc --noEmit"
   },
   "dependencies": {
     "bunfig": "^0.15.6"
