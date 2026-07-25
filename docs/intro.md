@@ -168,7 +168,7 @@ clarity tail --lines 50 --follow
 ## Community & Support
 
 - [GitHub Discussions](https://github.com/stacksjs/clarity/discussions) for questions & help
-- [Discord Community](https://discord.gg/stacksjs) for real-time chat
+- [Discord Community](https://stacksjs.com/discord) for real-time chat
 - [GitHub Issues](https://github.com/stacksjs/clarity/issues) for bugs & feature requests
 
 ## Contributing
