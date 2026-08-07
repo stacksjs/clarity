@@ -81,11 +81,11 @@
     "typecheck": "bun --bun tsc --noEmit"
   },
   "dependencies": {
-    "bunfig": "^0.15.6"
+    "bunfig": "^0.15.17"
   },
   "devDependencies": {
-    "@happy-dom/global-registrator": "^20.0.10",
-    "better-dx": "^0.2.20",
+    "@happy-dom/global-registrator": "^20.11.2",
+    "better-dx": "^0.2.22",
     "bumpp": "^10.3.1",
     "changelogen": "^0.6.2"
   },
