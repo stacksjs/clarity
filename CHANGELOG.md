@@ -1,3 +1,13 @@
+[Compare changes](https://github.com/stacksjs/clarity/compare/v0.3.32...v0.3.33)
+
+## 🧹 Chores
+
+- release v0.3.33 ([87daa28](https://github.com/stacksjs/clarity/commit/87daa28)) _(by Chris <chrisbreuer93@gmail.com>)_
+
+## Contributors
+
+- _Chris <chrisbreuer93@gmail.com>_
+
 [Compare changes](https://github.com/stacksjs/clarity/compare/v0.3.31...v0.3.32)
 
 ## ⚡ Performance Improvements
