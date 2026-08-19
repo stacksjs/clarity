@@ -10,6 +10,7 @@ await Bun.build({
   plugins: [dts()],
   splitting: true,
   target: 'node',
+  minify: true,
 })
 
 await Bun.build({
@@ -17,6 +18,7 @@ await Bun.build({
   outdir: './dist/bin',
   format: 'esm',
   target: 'node',
+  minify: true,
 })
 
 await Bun.build({
@@ -24,4 +26,5 @@ await Bun.build({
   outdir: './dist',
   target: 'browser',
   plugins: [dts()],
+  minify: true,
 })
