@@ -1,3 +1,21 @@
+[Compare changes](https://github.com/stacksjs/clarity/compare/v0.3.31...v0.3.32)
+
+## ⚡ Performance Improvements
+
+- **build**: minify the published bundles ([0e048b1](https://github.com/stacksjs/clarity/commit/0e048b1)) _(by Chris <chrisbreuer93@gmail.com>)_
+
+## 📚 Documentation
+
+- link the community as stacksjs.com/discord ([0ad3aae](https://github.com/stacksjs/clarity/commit/0ad3aae)) _(by Chris <chrisbreuer93@gmail.com>)_
+
+## 🧹 Chores
+
+- release v0.3.32 ([f3f1fea](https://github.com/stacksjs/clarity/commit/f3f1fea)) _(by Chris <chrisbreuer93@gmail.com>)_
+
+## Contributors
+
+- _Chris <chrisbreuer93@gmail.com>_
+
 [Compare changes](https://github.com/stacksjs/clarity/compare/v0.3.30...v0.3.31)
 
 ## 🐛 Bug Fixes
